@@ -37,22 +37,31 @@ jobs:
           node --input-type=module -e "import './lib/index.js'"
 
       - name: Publish GitHub Release
+        id: publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
           tag="v${version}"
+          zip="dsh-purge-${version}.zip"
+
+          # Already released: nothing to publish, and signing is skipped below.
+          # Previously this branch did `exit 0`, which silently skipped packaging
+          # while the *next* step still tried to sign a zip that was never built —
+          # so any push that did not bump the version failed the whole run.
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "already published: $tag"
+            echo "published=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
           first="$(head -n 1 release-notes.md | tr -d '\r')"
           if [ "$first" != "# ${version}" ]; then
             echo "release-notes.md 第一行必须是 # ${version}，现在是: ${first}"
             exit 1
           fi
-          zip="dsh-purge-${version}.zip"
+
           if git rev-parse -q --verify "refs/tags/${tag}^{}" >/dev/null; then
             commit="$(git rev-parse "refs/tags/${tag}^{}")"
             git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" "$commit"
@@ -67,12 +76,17 @@ jobs:
           fi
           test -s "$zip"
           gh release upload "$tag" "$zip" --clobber
-          echo "published https://github.com/YuJunZhiXue/dsh-purge/releases/tag/${tag}"
+          echo "published https://github.com/xlht4106/dsh-purge/releases/tag/${tag}"
+          echo "published=true" >> "$GITHUB_OUTPUT"
 
       # Sign the SAME zip that was just uploaded. The plugin refuses to install a
       # tag release whose signature is missing or invalid (lib/release-signature.js),
       # so a broken/missing secret must fail the build, not publish unsigned bytes.
+      #
+      # Skipped when Publish found the tag already released: in that case no zip was
+      # built in this run, and failing here would turn every non-release push red.
       - name: Sign release archive
+        if: steps.publish.outputs.published == 'true'
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
