@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The anchor tests compare patches against a real DSH tree. CI has no DSH
+      # install, so they self-skip; the dependency-free tests still run.
+      - name: Syntax-check every entry point
+        run: |
+          node --check lib/index.js
+          node --check lib/core.js
+          node --check lib/desktop.js
+          node --check lib/redteam/client.js
+          node --check client.js
+          node --check bin/dsh-purge.js
+
+      - name: Run regression suite
+        run: node test/run.mjs
+
+      # Guards the hand-edit drift documented in docs/perf-frontend.md:
+      # client.js is generated from lib/redteam/client.js, so a mismatch means
+      # someone edited the artifact without updating the source (or forgot to rebuild).
+      - name: client.js must match its source
+        run: |
+          node scripts/build-client.mjs
+          git diff --exit-code -- client.js

@@ -1612,12 +1612,21 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 					setAskRestart(false);
 					setNotice({ kind: "idle", text: "" });
 					const applyContent = action === "apply" ? readPromptBox() : "";
-					fetch("/dsh-purge/" + action, {
+					/*
+					 * 必须走 apiJson，不能裸 fetch。
+					 * apply / revert / uninstall 都是「改宿主文件 + 可能要重启」的长操作：
+					 *   · 裸 fetch 没有超时，宿主正在重启时请求既不 resolve 也不 reject，
+					 *     patchBusy 永远停在 true，整排按钮变灰且不再恢复；
+					 *   · 宿主重启窗口里路由会返回 HTML 或空体，`r.json()` 抛的是
+					 *     `Unexpected token '<'`，用户看到的错误与真实原因无关。
+					 * apiJson 按路径给足超时（apply 240s / revert 120s / uninstall 90s），
+					 * 并把 abort、非 JSON、连不上翻译成人话。
+					 */
+					apiJson("/dsh-purge/" + action, {
 						method: "POST",
 						headers: { "content-type": "application/json" },
 						body: JSON.stringify(action === "apply" ? { content: applyContent } : {}),
 					})
-						.then((r) => r.json())
 						.then((d) => {
 							if (ticket !== actionTicket.current) return;
 							if (responseNeedsPrompt(d)) {
@@ -1701,12 +1710,12 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 					setAskRestart(false);
 					setNotice({ kind: "idle", text: "" });
 					const content = readPromptBox();
-					fetch("/dsh-purge/override", {
+					/* 同上：裸 fetch 无超时，宿主重启时保存按钮会永久卡住。 */
+					apiJson("/dsh-purge/override", {
 						method: "POST",
 						headers: { "content-type": "application/json" },
 						body: JSON.stringify({ content: content }),
 					})
-						.then((r) => r.json())
 						.then((d) => {
 							if (ticket !== actionTicket.current) return;
 							if (!d.ok || responseNeedsPrompt(d)) {
@@ -2013,11 +2022,12 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 							tiny: true,
 							disabled: !ownLoaded,
 							onClick: () => {
-								fetch("/dsh-purge/own-servers", {
+								/* 走 apiJson：裸 fetch 没有超时，宿主重启时「保存名单」会一直没反应。 */
+								apiJson("/dsh-purge/own-servers", {
 									method: "POST",
 									headers: { "content-type": "application/json" },
 									body: JSON.stringify({ content: ownServers }),
-								}).then((r) => r.json()).then((d) => {
+								}).then((d) => {
 									if (!d || !d.ok) {
 										setNotice({ kind: "error", text: (d && d.error) || t("err.override", { error: "" }) });
 										return;
@@ -2737,8 +2747,9 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 				if (sawDrop) return;
 				stop("");
 			}, 25000);
-			fetch("/dsh-purge/restart", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
-				.then((r) => r.json())
+			/* 走 apiJson：/dsh-purge/restart 的默认超时是 60s，且 abort/非 JSON 会被翻译成人话；
+			   外层 25s 看门狗仍保留（它管的是「等宿主掉线」的业务超时，不是网络超时）。 */
+			apiJson("/dsh-purge/restart", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
 				.then((d) => {
 					if (!d.ok) throw new Error(d.error || "restart failed");
 					const next = (d && d.surface) || surf;
@@ -4028,30 +4039,79 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 .rt-shot-zoom{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:10px;cursor:zoom-out;padding:18px}
 .rt-shot-zoom img{max-width:96vw;max-height:86vh;border-radius:6px;box-shadow:0 18px 48px rgba(0,0,0,.5)}
-.rt-shot-zoom-cap{color:#e5e7eb;font-size:12px;text-align:center;max-width:90vw;overflow-wrap:anywhere}`    /* ---------------------------------------------------------- 桥接与状态 */
+.rt-shot-zoom-cap{color:#e5e7eb;font-size:12px;text-align:center;max-width:90vw;overflow-wrap:anywhere}
+/* ── 长列表渲染优化 ────────────────────────────────────────────────
+   content-visibility:auto 让**屏幕外**的列表行跳过渲染与布局（浏览器原生虚拟化），
+   滚动时再逐行补上。清洗页 82 条补丁、报告页上百张复现卡、漏洞聚合组都是长列表，
+   此前它们会一次性全部进布局树。
+   为什么不用 JS 虚拟化：这一版界面大量依赖表格自然高度与 Ctrl+F 查找，
+   自研窗口化要接管滚动与测量，风险和收益不匹配；content-visibility 是纯 CSS 增益。
+   contain-intrinsic-size 给的是"离屏时按多高占位"，取各行的典型高度，
+   偏差只影响滚动条长度估算，不影响最终布局（滚到近处会实测覆盖）。
+   注意：**不要**套在 .rt-row.head 上 —— 它是 sticky 表头，必须常驻渲染。 */
+.rt-table>.rt-row:not(.head){content-visibility:auto;contain-intrinsic-size:auto 52px}
+.rt-table>.rt-vrow:not(.head){content-visibility:auto;contain-intrinsic-size:auto 40px}
+.rt-table>.rt-score-row{content-visibility:auto;contain-intrinsic-size:auto 34px}
+.rt-pane>.rt-rep,.rt-pane>.rt-kb,.rt-pane>.rt-score-group{content-visibility:auto;contain-intrinsic-size:auto 120px}
+.rt-pane>.rt-sec-wrap{content-visibility:auto;contain-intrinsic-size:auto 60px}
+.rt-list>.rt-item{content-visibility:auto;contain-intrinsic-size:auto 64px}
+/* 尊重"减少动态效果"偏好：只去掉过渡，不改变功能 */
+@media (prefers-reduced-motion:reduce){.rt-tab,.rt-btn,.rt-item,.rt-row,.rt-seg{transition:none!important}}`    /* ---------------------------------------------------------- 桥接与状态 */
     /** 是否在「全面浏览」独立窗口里（URL hash 标记，复用同一套界面代码）。 */
     const isFullWindow = () => {
       try { return String(window.location.hash || '') === '#redteam-full' } catch { return false }
     }
 
-    const api = (req) => fetch('/redteam/api', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(req),
-    }).then(async (res) => {
-      const text = await res.text().catch(() => '')
-      let data = null
-      try { data = text ? JSON.parse(text) : null } catch {
-        return { ok: false, error: res.status + ' non-json: ' + String(text).slice(0, 120) }
-      }
-      if (!res.ok) {
-        return Object.assign({}, data || {}, {
-          ok: false,
-          error: (data && (data.error || data.message)) || (res.status + ' ' + res.statusText),
-        })
-      }
-      return data
-    })
+    /**
+     * 统一桥接调用。
+     *
+     * 为什么不用 `fetch(...).then(res => res.json())`：
+     *   · fetch **没有默认超时** —— 宿主卡住 / 正在重启时，请求既不 resolve 也不 reject，
+     *     页签永远停在「加载中…」，用户只能硬刷新（这是"卡死"观感的主要来源）；
+     *   · 宿主重启窗口里路由会返回 HTML 或空体，`res.json()` 抛的是
+     *     `Unexpected token '<'`，界面上看到的错误和真实原因无关。
+     * 所以这里：先取文本再解析、失败给可读原因、加 25 秒超时。
+     *
+     * 失败一律 resolve 成 `{ ok: false, error }`，与既有 `r.ok === false` 判断完全兼容
+     * （所有调用点原本就是"检查 ok 而不是 catch"的写法）。
+     */
+    const API_TIMEOUT_MS = 25000
+    const api = (req) => {
+      const canAbort = typeof AbortController === 'function'
+      const ctrl = canAbort ? new AbortController() : null
+      const timer = ctrl
+        ? setTimeout(() => { try { ctrl.abort() } catch (e) { /* ignore */ } }, API_TIMEOUT_MS)
+        : null
+      return fetch('/redteam/api', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(req),
+        signal: ctrl ? ctrl.signal : undefined,
+      }).then(async (res) => {
+        const text = await res.text().catch(() => '')
+        let data = null
+        try { data = text ? JSON.parse(text) : null } catch (e) {
+          return { ok: false, error: res.status + ' non-json: ' + String(text).slice(0, 120) }
+        }
+        if (!res.ok) {
+          return Object.assign({}, data || {}, {
+            ok: false,
+            error: (data && (data.error || data.message)) || (res.status + ' ' + res.statusText),
+          })
+        }
+        /* 空体（例如 204）按成功处理，别让调用方拿到 null 再崩 */
+        return data === null ? { ok: true } : data
+      }, (error) => {
+        const message = String((error && error.message) || error)
+        if (error && error.name === 'AbortError') {
+          return { ok: false, error: '请求超时（' + Math.round(API_TIMEOUT_MS / 1000) + ' 秒）：宿主正忙或正在重启，稍后点「刷新」' }
+        }
+        if (/failed to fetch|networkerror|load failed/i.test(message)) {
+          return { ok: false, error: '连不上宿主接口：确认 dsh 还在跑，然后点「刷新」' }
+        }
+        return { ok: false, error: message }
+      }).finally(() => { if (timer) clearTimeout(timer) })
+    }
 
     let ui = { open: true, tab: 'assets' }
     const subs = new Set()
@@ -5572,7 +5632,7 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
           a.download = 'report-' + String(label || 'score').replace(/[^\w.\-]/g, '_') + '.md'
           a.click()
           /* 立刻 revoke 会在部分浏览器里让 click 启动的下载断流,延后一拍 */
-          setTimeout(() => { try { URL.revokeObjectURL(url) } catch { /* ignore */ } }, 1000)
+          setTimeout(() => { try { URL.revokeObjectURL(url) } catch (e) { /* ignore */ } }, 1000)
           setMsg({ ok: '已下载：' + label })
         } catch (e) { setMsg({ err: '下载失败：' + ((e && e.message) || e) }) }
       }
@@ -7167,6 +7227,13 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
       const [open, setOpen] = React.useState(false)
       const [msg, setMsg] = React.useState(null)
       const [countdown, setCountdown] = React.useState(0)
+      /*
+       * 倒计时定时器必须能被外部取消：
+       *   · 用户在重启倒计时里点「关闭」时，若 interval 还在跑，到点会把页面 reload，
+       *     把用户正在做的事冲掉；
+       *   · 组件卸载后 setInterval 仍持有 setCountdown 闭包，属于典型的泄漏。
+       * 用一个 ref 持有 id，关闭弹窗与卸载时都清掉。
+       */
       const countdownRef = React.useRef(null)
       const clearCountdown = React.useCallback(() => {
         if (countdownRef.current) { try { clearInterval(countdownRef.current) } catch { /* ignore */ } }
