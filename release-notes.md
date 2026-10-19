@@ -1,3 +1,37 @@
+# 1.1.72
+
+## 中文
+
+- 版本 **1.1.72**。适配 DeepSeek Harness 桌面端 **0.2.1-rc.2**（npm `latest` 即此版本）。
+- 0.2.1 把 Web 面身份提示词迁到新包 `dsh-harness-dev-context`，插件原先只认 `dsh-web-app`，#32 / #53 会静默失效。现已补该目标键与新版锚点，同时保留 0.2.0 的旧锚点。
+- #71 梁神预设改为 persona `text:` 单行形态；#40 补 0.2.1 的 `requiredContexts` 过滤语义；#77 补 `append()` 的 `revised.size` 短路形态。
+- **补丁状态新增 `stale`**：完成标记在、但上游锚点也还在时，不再谎报 `applied`（这类补丁其实从未生效）。`--status` 用 ⚠ 标出，界面计数与中英文案同步。
+- **修复 Windows 备份失败**：`backupAll` 原用 `rename` 覆盖自己刚 `wx` 创建的空占位文件，Windows 拒绝，实测 61/62 个备份 EPERM。改为直接 `copyFile`。
+- **修复清洗页按钮永久卡死**：`apply` / `revert` / `uninstall` / 保存提示词 / 保存名单 / 重启原用裸 `fetch`，无超时；宿主重启时请求不返回，按钮一直处于忙碌态。统一改走带超时的 `apiJson`。
+- 换行符保真：区分纯 LF / 纯 CRLF / 混用三种情况，混用文件逐行保留原换行符，不再把整文件改写导致 `.bak` diff 全变。
+- 长列表加 `content-visibility` 视口裁剪；`/redteam/api` 加 25 秒超时与非 JSON 可读错误；下载后 `revokeObjectURL` 延后 1 秒。
+- **`engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`**。此前只有 `engines.node`，宿主对版本完全不设防，装上才发现补丁不生效。
+- **发布验签（Ed25519）**：tag 版更新改为从 Release 固定产物下载并强制验签，签名载荷含版本号以阻止降级；分支通道允许未签名但标注「未验签」。支持直接导入 OpenSSH 格式私钥（密码管理器生成的那种）。
+- 发布源改为 `xlht4106/dsh-purge`（`DSH_PURGE_REPO` 可覆盖）；上游已暂停更新且无写权限，签名产物只能由本仓库产出。
+- 新增 `--status` 的「发布源」「更新验签」行与第三方插件段，可报告 hindsight 的安装 / 挂载 / 禁用状态。
+- 新增回归测试 11 项（补丁锚点、0.2.0 向后兼容、备份、EOL 保真、stale 检测、验签、OpenSSH 导入、hindsight 共存等）与 `.github/workflows/test.yml`。
+
+## English
+
+- **1.1.72**. Targets DeepSeek Harness desktop **0.2.1-rc.2** (the npm `latest`).
+- 0.2.1 moved the Web-surface identity prompt into the new `dsh-harness-dev-context` package; the plugin only knew `dsh-web-app`, so #32 / #53 silently no-oped. Added the new target key and anchors while keeping the 0.2.0 ones.
+- #71 accepts the persona `text:` single-line form; #40 gains the 0.2.1 `requiredContexts` filter semantics; #77 accepts the `revised.size` short-circuit in `append()`.
+- **New `stale` patch state**: a present marker plus a still-live upstream anchor no longer reports `applied` (those patches never took effect). Shown as ⚠ in `--status`, with matching UI counts and copy.
+- **Fixed Windows backup failures**: `backupAll` renamed over the empty placeholder it had just created with `wx`, which Windows refuses — 61/62 backups failed with EPERM in testing. Now uses `copyFile` directly.
+- **Fixed permanently stuck clean-page buttons**: `apply` / `revert` / `uninstall` / prompt save / own-servers save / restart used bare `fetch` with no timeout; while the host restarts the request never settles and the buttons stay busy forever. All routed through the timeout-aware `apiJson`.
+- Newline fidelity: distinguishes pure LF, pure CRLF and mixed files; mixed files keep each line's own ending instead of rewriting the whole file and making the `.bak` diff look total.
+- Long lists use `content-visibility`; `/redteam/api` gets a 25 s timeout and readable non-JSON errors; `revokeObjectURL` is deferred by 1 s.
+- **`engines.dsh` pins `>=0.2.0-rc.2 <0.3.0`**. Previously only `engines.node` existed, so the host never checked compatibility and users found out only after patches failed to apply.
+- **Release signature verification (Ed25519)**: tag updates download the fixed Release asset and require a valid signature; the signed payload includes the version to block downgrades. Branch builds may be unsigned but are labelled unverified. OpenSSH-format private keys (as produced by password managers) import directly.
+- Release source is now `xlht4106/dsh-purge` (override with `DSH_PURGE_REPO`); upstream is paused and read-only, so signed assets can only come from this repo.
+- `--status` gained a release-source line, a signing line, and a third-party section reporting hindsight's installed / mounted / disabled state.
+- 11 regression tests (patch anchors, 0.2.0 backward compatibility, backup, EOL fidelity, stale detection, signatures, OpenSSH import, hindsight coexistence) plus `.github/workflows/test.yml`.
+
 # 1.1.71
 
 ## 中文
