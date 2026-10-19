@@ -3,7 +3,6 @@ name: Test
 on:
   push:
     branches:
-      - mit-1.1.72
       - master
   pull_request:
   workflow_dispatch:

@@ -54,12 +54,15 @@ Copyright (c) 2026 小杨 (YuJunZhiXue)
 
 | 位置 | 内容 | 说明 |
 | --- | --- | --- |
-| 本地 `master` | MIT 版本，跟踪 `origin/mit-1.1.72` | 日常工作分支 |
-| `origin/mit-1.1.72` | 同上，远端备份 | 发布与 CI 的分支 |
-| `origin/master` | **上游的商业许可版本** | 仅作历史参考，**不要合并** |
+| 本地 `master` | MIT 版本主线 | 日常工作分支 |
+| `origin/master` | 同上，远端备份 | 发布与 CI 的分支 |
 
-**注意**：`origin/master` 与本地 `master` 同名但内容不同源。本地的 `master` 跟踪的是
-`origin/mit-1.1.72`，不是 `origin/master`。
+上游的商业许可版本曾在 `origin/master` 上，已被本仓库强制覆盖（2026-10-20）。
+覆盖前的状态备份在 tag `upstream-master-before-overwrite-20261020`（指向 `8df4406`），
+需要查证历史时用 `git show upstream-master-before-overwrite-20261020`。
+
+> 曾经临时使用 `mit-1.1.72` 作为发布分支，现已统一回 `master`。远端若还残留该分支，
+> 可以删除：`git push origin --delete mit-1.1.72`。
 
 ---
 
@@ -68,7 +71,8 @@ Copyright (c) 2026 小杨 (YuJunZhiXue)
 | 配置 | 值 | 作用 |
 | --- | --- | --- |
 | `upstream` 远端 | **已移除** | 从根源上消除误 pull 上游的可能 |
-| 本地 `master` 的上游 | `origin/mit-1.1.72` | 默认 pull/push 走自己的分支 |
+| 本地 `master` 的上游 | `origin/master` | 默认 pull/push 走自己的分支 |
+| `push.default` | `upstream` | 本地分支名与远端一致，无需额外指定 |
 | `push.autoSetupRemote` | `true` | 首次推送自动建立上游 |
 | `fetch.prune` | `true` | 清理已删除的远端分支 |
 
@@ -86,14 +90,14 @@ git remote remove upstream-ref             # 看完即删
 ## 四、日常流程
 
 ```powershell
-# 拉取自己的远端
-git pull                                  # 等价于 git pull origin mit-1.1.72
+# 拉取
+git pull                                  # 等价于 git pull origin master
 
 # 提交
 git add -A
 git commit -m "..."
 
-# 推送（推到自己 fork 的 mit-1.1.72）
+# 推送
 git push                                  # push.autoSetupRemote 已开，无需写全
 ```
 
@@ -113,8 +117,8 @@ git push                                  # push.autoSetupRemote 已开，无需
 | 项 | 值 |
 | --- | --- |
 | 发布源仓库 | `xlht4106/dsh-purge`（`lib/update.js` 的 `DEFAULT_REPO`，可用 `DSH_PURGE_REPO` 覆盖） |
-| 稳定通道分支 | `mit-1.1.72`（`lib/update.js` 的 `STABLE_REF`） |
-| CI 触发分支 | `mit-1.1.72`、`master`（`.github/workflows/*.yml`） |
+| 稳定通道分支 | `master`（`lib/update.js` 的 `STABLE_REF`） |
+| CI 触发分支 | `master`（`.github/workflows/*.yml`） |
 
 **这四处必须保持一致**，改分支名时一起改，否则会出现「更新去 A 找、CI 在 B 签名」的错配。
 
