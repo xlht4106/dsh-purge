@@ -55,25 +55,68 @@ function fail(message) {
   process.exit(1);
 }
 
-/** Replace the placeholder keyring with a real public key. Refuses to guess. */
-function writePublicKey(publicB64) {
+/**
+ * Decide, WITHOUT writing anything, whether the keyring can be updated.
+ *
+ * This check must run before any private key is persisted. An earlier version
+ * wrote the private key first and only then discovered the keyring was not in
+ * placeholder form — leaving a half-applied state (new private key on disk, old
+ * public key in code) that silently fails to sign verifiable releases.
+ *
+ * @param {string} publicB64
+ * @returns {string} the file content to write
+ */
+function planPublicKeyWrite(publicB64) {
   const source = fs.readFileSync(SIG_MODULE, "utf8");
-  if (!source.includes(PLACEHOLDER_BLOCK)) {
-    fail(
-      "lib/release-signature.js 的 TRUSTED_KEYS 已不是占位形态。\n" +
-        "  可能已经填过公钥，或文件被改过。请手动检查；本脚本不猜测、不覆盖。",
+  if (source.includes(PLACEHOLDER_BLOCK)) {
+    return source.replace(
+      PLACEHOLDER_BLOCK,
+      "export const TRUSTED_KEYS = [\n" +
+        `  // 生成于 ${new Date().toISOString().slice(0, 10)}，指纹见 docs/update-signing.md。\n` +
+        "  // 轮换时新增一项，不要替换现有项（见该文档「密钥轮换」）。\n" +
+        "  {\n" +
+        '    id: "release-2026",\n' +
+        `    publicKey:\n      "${publicB64}",\n` +
+        "  },\n" +
+        "];",
     );
   }
-  const replacement =
-    "export const TRUSTED_KEYS = [\n" +
-    `  // 生成于 ${new Date().toISOString().slice(0, 10)}，指纹见 docs/update-signing.md。\n` +
-    "  // 轮换时新增一项，不要替换现有项（见该文档「密钥轮换」）。\n" +
-    "  {\n" +
-    '    id: "release-2026",\n' +
-    `    publicKey:\n      "${publicB64}",\n` +
-    "  },\n" +
-    "];";
-  fs.writeFileSync(SIG_MODULE, source.replace(PLACEHOLDER_BLOCK, replacement), "utf8");
+
+  // Already configured: allow replacing an entry that carries the same id, but
+  // only when it is the sole entry — i.e. this repo has not shipped a release yet.
+  // Once more than one key exists we are in a rotation window and must not guess.
+  const keys = [...source.matchAll(/id:\s*"([^"]+)",\s*\n\s*publicKey:\s*\n?\s*"([^"]*)"/g)];
+  if (keys.length === 0) {
+    fail(
+      "lib/release-signature.js 里找不到可识别的 TRUSTED_KEYS 条目。\n" +
+        "  文件可能被改过。请手动检查；本脚本不猜测、不覆盖。",
+    );
+  }
+  if (keys.length > 1) {
+    fail(
+      `TRUSTED_KEYS 里已有 ${keys.length} 个密钥，处于轮换窗口。\n` +
+        "  此时替换会让只信任旧公钥的客户端拒绝新版本。请手动按文档「密钥轮换」流程处理。",
+    );
+  }
+  const [, id, current] = keys[0];
+  if (current === publicB64) {
+    return source; // already correct, nothing to do
+  }
+  const updated = source.replace(
+    /(id:\s*"[^"]+",\s*\n\s*publicKey:\s*\n?\s*)"[^"]*"/,
+    `$1"${publicB64}"`,
+  );
+  if (updated === source) {
+    fail("无法定位 TRUSTED_KEYS 里的 publicKey 字段，请手动更新。");
+  }
+  console.log(`✓ 将替换 TRUSTED_KEYS 中 id=${id} 的公钥（当前仓库尚未发布过 Release，可安全替换）`);
+  return updated;
+}
+
+/** Replace the keyring with a real public key. Refuses to guess. */
+function writePublicKey(publicB64) {
+  const next = planPublicKeyWrite(publicB64);
+  fs.writeFileSync(SIG_MODULE, next, "utf8");
   console.log("✓ 公钥已写入 lib/release-signature.js");
 }
 
@@ -167,8 +210,10 @@ if (importIndex !== -1 || useStdin || useClipboard) {
   console.log("✓ OpenSSH 私钥解析成功，签名/验签自检通过");
   console.log(`✓ OpenSSH 指纹：SHA256:${imported.sshFingerprint}`);
 
-  // Persist the PKCS8 form outside the repo so local signing works.
-  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 });
+  // Order matters: validate every precondition BEFORE touching the filesystem.
+  // A previous version wrote the private key first, then failed on the keyring,
+  // leaving a new private key next to an old public key — signing then produces
+  // releases that no client can verify.
   const target = path.join(BACKUP_DIR, "dsh-purge-signing.key");
   if (fs.existsSync(target)) {
     fail(
@@ -176,6 +221,10 @@ if (importIndex !== -1 || useStdin || useClipboard) {
         "  先确认它是否还需要，移走后再导入，避免覆盖。",
     );
   }
+  const plannedSource = planPublicKeyWrite(imported.publicB64);
+
+  // All checks passed; now persist.
+  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 });
   fs.writeFileSync(target, imported.pkcs8Pem, { mode: 0o600 });
   fs.writeFileSync(`${target}.pub`, `${imported.publicB64}\n`, "utf8");
 
@@ -188,7 +237,10 @@ if (importIndex !== -1 || useStdin || useClipboard) {
   }
   console.log(`✓ PKCS8 私钥已写入仓库外：${target}`);
 
-  writePublicKey(imported.publicB64);
+  // Use the content validated before the write, so no second validation pass can
+  // disagree with what was checked.
+  fs.writeFileSync(SIG_MODULE, plannedSource, "utf8");
+  console.log("✓ 公钥已写入 lib/release-signature.js");
   printHandover(target, imported.publicB64);
   process.exit(0);
 }

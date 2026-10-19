@@ -113,20 +113,46 @@ cd H:\coding\dsh-purge
 node scripts/setup-signing-key.mjs
 ```
 
-这个脚本和 `generate-signing-key.mjs` 的区别是**顺序安全**：它会先把私钥写到仓库外的备份目录并**重新读取验证可用**，确认之后才把公钥写进代码，最后打印指纹和后续命令。它**不会**删除私钥——删不删由你决定。
+这个脚本和 `generate-signing-key.mjs` 的区别是**顺序安全**：它会先校验所有前置条件（备份目录是否已有私钥、公钥能否写入），全部通过后才落盘，避免「私钥写了、公钥没写」的半完成状态。它**不会**删除私钥——删不删由你决定。
 
-本机已用它生成并启用了一把密钥：
+### 5.3 用密码管理器托管的密钥（推荐）
+
+密码管理器的「生成 SSH 密钥」功能通常**只能复制、不能下载**。三种输入方式任选：
+
+```powershell
+# 从剪贴板读（先在 Bitwarden 里点复制私钥）
+node scripts/setup-signing-key.mjs --clipboard
+
+# 从标准输入读（粘贴后按 Ctrl+Z 再回车）
+node scripts/setup-signing-key.mjs --stdin
+
+# 从文件读
+node scripts/setup-signing-key.mjs --import <私钥文件>
+```
+
+后两种不需要先把私钥存成临时文件。脚本会：
+
+1. 校验内容确实是 OpenSSH 私钥（漏了 BEGIN/END 行会明确报错）
+2. 解析并转成 PKCS8，同时做签名/验签自检
+3. **打印 OpenSSH 指纹**，供你和密码管理器里显示的值核对
+4. 校验通过后才写私钥（仓库外）和公钥（代码里）
+
+当前生效的密钥：
 
 | 项 | 值 |
 | --- | --- |
 | key id | `release-2026` |
-| 公钥（base64 SPKI） | `MCowBQYDK2VwAyEAFuy2o5IdyuspyVQ+kqcSUGt/xgDZ0OEq38rBgUsE6Pw=` |
-| 指纹（SHA-256 前 16 字节） | `9ec5 f77c 94ae f0c5` |
-| 完整 SHA-256 | `9ec5f77c94aef0c5a12c76322740398925f39df19e58508910595ed232444125` |
+| 来源 | Bitwarden 生成，经 `--stdin` 导入 |
+| 公钥（SPKI base64） | `MCowBQYDK2VwAyEAIh5k03ptIRHBRuKAHpt0nLCEK1JzZVFUtaCBCC93z8o=` |
+| 公钥（SSH 格式） | `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICIeZNN6bSERwUbigB6bdJywhCtSc2VRVLWggQgvd8/K` |
+| OpenSSH 指纹 | `SHA256:7BcUIxRWysck5BMgZ51fTnmlJfOHE1Ehsp2/YJwqObQ` |
+| SPKI SHA-256（前 16 字节） | `2598 30a0 981f ab45` |
 | 私钥位置 | `%USERPROFILE%\dsh-purge-signing-backup\dsh-purge-signing.key`（仓库外） |
 | GitHub Secret | 已设到 `xlht4106/dsh-purge` 的 `RELEASE_SIGNING_KEY` |
 
-### 5.3 手动做（等价步骤）
+> 更换密钥前生成的那一对已归档到 `%USERPROFILE%\dsh-purge-signing-archive-20261020\`，没有删除，可随时回退。
+
+### 5.4 手动做（等价步骤）
 
 **① 私钥 → GitHub Secrets**
 
@@ -169,7 +195,7 @@ Remove-Item "$env:USERPROFILE\dsh-purge-signing-backup\dsh-purge-signing.key"
 
 > **踩过的坑**：第一次设置时按旧文档先删了私钥，结果既没备份也没进 Secrets，那对密钥直接作废（Ed25519 私钥无法从公钥反推）。因为当时还没签过任何产物，重生成零成本。`setup-signing-key.mjs` 就是为了避免这个顺序错误而写的。
 
-### 5.4 发布时自动签名
+### 5.5 发布时自动签名
 
 `release.yml` 新增一步，在打包上传后立刻签名：
 
