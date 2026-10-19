@@ -60,3 +60,25 @@ jobs:
           test -s "$zip"
           gh release upload "$tag" "$zip" --clobber
           echo "published https://github.com/YuJunZhiXue/dsh-purge/releases/tag/${tag}"
+
+      # Sign the SAME zip that was just uploaded. The plugin refuses to install a
+      # tag release whose signature is missing or invalid (lib/release-signature.js),
+      # so a broken/missing secret must fail the build, not publish unsigned bytes.
+      - name: Sign release archive
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          zip="dsh-purge-${version}.zip"
+          if [ -z "${RELEASE_SIGNING_KEY:-}" ]; then
+            echo "RELEASE_SIGNING_KEY is not configured."
+            echo "Generate one with: node scripts/generate-signing-key.mjs"
+            echo "Then: gh secret set RELEASE_SIGNING_KEY < dsh-purge-signing.key"
+            exit 1
+          fi
+          node scripts/sign-release.mjs "$zip" "$version"
+          gh release upload "$tag" "${zip}.sig" --clobber
+          echo "signed and uploaded ${zip}.sig"

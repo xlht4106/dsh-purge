@@ -32,3 +32,9 @@ default-prompt-inject.md
 /official-harness-payload.7z
 *.asar
 *.asar.bak
+
+# 发布签名私钥，绝不能进仓库（公钥在 lib/release-signature.js 里）
+dsh-purge-signing.key
+*.pem
+*.key
+

@@ -166,8 +166,10 @@ $ DSH_SURFACE=desktop node -e "...patchStatus(aiBase)..."
 | `lib/core.js` | #40 补 0.2.1 正则 + 新增 `COMPLETE_PROMPT_WATERFALL_INJECT_021` 常量 |
 | `lib/core.js` | #77 补 `size > 0` 短路形态 |
 | `package.json` | `engines.dsh` 新增；`dshTarget` 更新为 `0.2.1-rc.2` |
+| `README.md` / `README.zh-CN.md` | 适配范围改为「0.2.1 用 1.1.72+；0.2.0 用 1.1.40–1.1.71」，徽章 `dsh-0.2.1--rc.2` |
+| `bin/dsh-purge.js` | `--status` 增加「更新验签」行与第三方插件段 |
 
-未改动：`README.md` / `README.zh-CN.md` 的适配范围段仍写「0.2.0-rc.2」。**建议同步更新**，但本次未动，因为作者在 README 顶部声明「暂停更新」，且适配范围涉及对外承诺，应由维护者确认后再改（详见「未做项」）。
+README 已同步更新（第二轮）：适配范围明确区分 0.2.1 / 0.2.0 / 0.1.7 三档，并说明 `engines.dsh` 会在安装/启用时拦截不兼容版本。作者「暂停更新」的声明未改动 —— 那是维护者状态，不是版本事实。
 
 ---
 
@@ -175,7 +177,7 @@ $ DSH_SURFACE=desktop node -e "...patchStatus(aiBase)..."
 
 | 项 | 理由 |
 | --- | --- |
-| 更新 README 适配范围 / 徽章 | 属对外版本承诺，需维护者拍板；本次只落工程侧护栏 |
+| 更新 README 适配范围 / 徽章 | ✅ 第二轮已完成（见第五节改动清单） |
 | 对真实安装执行 apply 验证 | 会改写用户正在使用的 DSH，属破坏性操作。已改用「纯净树 + 纯函数」验证替代 |
 | 修复 #21/#80 | 经核实是还原型补丁的正确空操作，改动反而会破坏语义 |
 | 让 `dshTarget` 参与宿主校验 | 宿主不读该字段，改名或加逻辑都无法生效；正确做法是 `engines.dsh`，已采用 |

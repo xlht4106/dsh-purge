@@ -16,6 +16,8 @@
 | 4 | 构建产物 `client.js` 与源文件脱节，重建会静默丢修复 | 中 | `client.js` vs `lib/redteam/client.js` |
 | 5 | 38 处静默 `catch {}`，故障被吞，用户与日志都看不到 | 中 | `lib/*.js`、`lib/redteam/*.js` |
 
+> **第二轮更新**：#1 已落地验签框架（见 [`update-signing.md`](update-signing.md)），#2、#3、#4 已修复，详见 §十。新增发现：C-2（Windows 备份 EPERM）也已修复。
+
 ---
 
 ## 二、安全
@@ -298,18 +300,39 @@ export async function hasBackup(aiBase) {
 
 ---
 
-## 十、本次已修复项（与上面各条对应）
+## 十、已修复项（与上面各条对应）
+
+### 第一轮
 
 | 条目 | 修复内容 | 验证 |
 | --- | --- | --- |
 | S-2 | `package.json` 增 `engines.dsh: ">=0.2.0-rc.2 <0.3.0"` | 用宿主自带 semver 实测 6 个版本 |
 | C-2 | `backupAll()` 不再「wx 占位 + rename 覆盖」，改为直接 `copyFile` 到已占位的 bak | `test/backup.test.mjs`：62/62 字节一致（修复前 61 个 EPERM） |
-| M-2 | 把 HEAD 产物里独有的 `countdownRef`/`clearCountdown`/`closeModal` 回填源文件并重建 | `test/client-artifact.test.mjs` + 构建幂等（两次构建 sha256 相同） |
-| T-1 | 新增 `test/`（5 个测试）+ `npm test` | `5 passed, 0 failed` |
+| M-2 | 把 HEAD 产物里独有的 `countdownRef`/`clearCountdown`/`closeModal` 回填源文件并重建 | `test/client-artifact.test.mjs` + 构建幂等 |
+| T-1 | 新增 `test/` + `npm test` | 10 passed |
 | T-2 | 新增 `.github/workflows/test.yml`（含产物漂移检查） | 本地模拟三步全过 |
 | 适配 | 4 条 0.2.1 漂移补丁修复 + `harness-dev-context` 目标键 | `docs/adapt-0.2.1-rc.2.md` |
 
-**未修但已给出方案**：S-1（更新验签，需维护者生成密钥对）、C-1（假 applied，需重新设计 settled 判定语义）、C-3（混用换行符）、C-4（backup manifest）、M-1（拆分 core.js）、S-3、S-4、P-2。
+### 第二轮
+
+| 条目 | 修复内容 | 验证 |
+| --- | --- | --- |
+| **S-1** | 新增 `lib/release-signature.js`（Ed25519 验签 + 降级保护 + 通道分级）、`scripts/generate-signing-key.mjs`、`scripts/sign-release.mjs`；`update.js` 改为 tag 版从 Release 固定产物下载并强制验签；`release.yml` 增签名步骤；`.gitignore` 保护私钥 | `test/release-signature.test.mjs` 16 项断言全过；端到端签名实测 |
+| **C-1** | 新增 `patchStale()`：`skipIfMarked` 补丁「marker 在 + 锚点也在」判为 `stale`，不再谎报 `applied`；`--status` 用 ⚠ 标出；UI 计数与中英文案同步 | `test/stale-detection.test.mjs`；纯净树零误报 |
+| **C-3** | `detectEol()` / `applyEol()`：区分纯 LF、纯 CRLF、混用三种情况，混用文件逐行保留原换行符 | `test/eol-fidelity.test.mjs` |
+| **C-4** | 尝试了快速探测方案，**实测更慢（107ms vs 85ms）已回退**；正确方向（backup manifest）记入代码注释 | `test/has-backup.test.mjs`（等价性守卫） |
+| 新增 | `lib/hindsight-compat.js` + `--status` 第三方插件段 | `test/hindsight-compat.test.mjs` 23 项断言 |
+| 文档 | 新增 `docs/update-signing.md`、`docs/hindsight-coexistence.md`；README 适配声明更新到 0.2.1-rc.2 | — |
+
+### 仍然未修（已给方案）
+
+| 条目 | 原因 |
+| --- | --- |
+| S-1 的密钥落地 | 私钥必须由维护者生成，我不能代生成生产密钥。框架已就绪，填入公钥即生效 |
+| C-4 的 manifest 方案 | 属接口变更（`backupAll` 要写 manifest），留给维护者决定 |
+| M-1 拆分 `core.js` | 8083 行拆分是大重构，风险高，建议单独 PR |
+| S-3 PowerShell 调用优化 | 需先实测启动耗时占比，避免过早优化 |
+| S-4 日志脱敏 | 低危，可复用现有 `displayPath()` |
 
 ---
 

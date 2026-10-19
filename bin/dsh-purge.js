@@ -1,9 +1,33 @@
 #!/usr/bin/env node
 
+import path from "node:path";
 import * as core from "../lib/core.js";
 import * as rules from "../lib/rules.js";
+import { hindsightReport } from "../lib/hindsight-compat.js";
+import { hasTrustedKey } from "../lib/release-signature.js";
 
 const args = process.argv.slice(2);
+
+/** 第三方插件的共存状态。探测失败不影响主状态输出。 */
+function thirdPartyLines(state) {
+  const out = [];
+  const profileDir = path.join(state.dsh_home || "", "profiles", state.surface || "web");
+  try {
+    const hs = hindsightReport(profileDir);
+    if (hs.state === "absent") return out;
+    const label = {
+      ok: "正常 / ok",
+      disabled: "已禁用 / disabled",
+      "not-mounted": "已安装但未挂载 / not mounted",
+      "not-installed": "未安装 / not installed",
+    }[hs.state] || hs.state;
+    out.push(`  hindsight     ${label}${hs.version ? "  v" + hs.version : ""}`);
+    if (hs.note) out.push(`                ${hs.note}`);
+  } catch {
+    // 探测是附加信息，坏掉不挡 --status。
+  }
+  return out;
+}
 
 function printStatus(state) {
   const out = [];
@@ -23,15 +47,26 @@ function printStatus(state) {
   out.push(`  备份 / backup  ${state.has_backup ? "有 / yes" : "无 / no"}`);
   out.push(`  注入文件       ${state.override_path}`);
   out.push(`  注入状态       ${state.override_status}`);
+  // 更新验签：没有内置公钥时，tag 发布版一律装不上，用户需要知道原因。
+  out.push(
+    `  更新验签       ${hasTrustedKey() ? "已配置公钥 / trusted key present" : "未配置公钥 / no trusted key（发布版更新会被拒绝）"}`,
+  );
   out.push("");
   out.push(`  补丁 ${state.patches_applied}/${core.ALL_PATCHES.length} 已清洗, ${state.patches_pending} 待清洗`);
   for (const p of core.ALL_PATCHES) {
     const s = state.patch_status[p.id];
-    const mark = s === "applied" ? "✓" : s === "pending" ? "✗" : "·";
+    // ⚠ 表示「标记在但锚点还在」：这条补丁其实没生效，需要重新应用。
+    const mark = s === "applied" ? "✓" : s === "stale" ? "⚠" : s === "pending" ? "✗" : "·";
     out.push(`    ${mark} [#${String(p.id).padEnd(2)}] ${p.name.padEnd(30)} ${p.layer}/${p.layer_en} — ${s}`);
   }
   out.push("");
   out.push(`  shim: dsh.cmd=${state.shim_cmd}  dsh.ps1=${state.shim_ps1}  dsh=${state.shim_bin}`);
+  const third = thirdPartyLines(state);
+  if (third.length) {
+    out.push("");
+    out.push("  第三方插件 / third-party");
+    out.push(...third);
+  }
   return out.join("\n");
 }
 

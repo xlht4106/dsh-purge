@@ -183,6 +183,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"metric.purged.skip": "已写入。跳过 {n} 项，本机没有这些文件",
 			"metric.pendingShort": "待处理 {n}",
 			"metric.unmatchedShort": "没对上 {n}",
+			"metric.staleShort": "标记在但没生效 {n}",
 			"metric.skipShort": "跳过 {n}",
 			"metric.unlocated.count": "—",
 			"metric.shim": "shim",
@@ -523,6 +524,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"metric.purged.skip": "Written. Skipped {n}; those files are not on this install",
 			"metric.pendingShort": "Pending {n}",
 			"metric.unmatchedShort": "No match {n}",
+			"metric.staleShort": "Marked but not applied {n}",
 			"metric.skipShort": "Skipped {n}",
 			"metric.unlocated.count": "—",
 			"metric.shim": "shim",
@@ -1122,11 +1124,12 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 		}
 
 		function tallyPatches(rows) {
-			const out = { applied: 0, pending: 0, unmatched: 0, skipped: 0, total: 0 };
+			const out = { applied: 0, pending: 0, unmatched: 0, skipped: 0, stale: 0, total: 0 };
 			for (const row of rows || []) {
 				out.total += 1;
 				if (row.st === "applied" || row.st === "already") out.applied += 1;
 				else if (row.st === "pending") out.pending += 1;
+				else if (row.st === "stale") out.stale += 1;
 				else if (row.st === "unmatched") out.unmatched += 1;
 				else out.skipped += 1;
 			}
@@ -1151,6 +1154,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 				const tally = tallyPatches(rows);
 				const notes = [];
 				if (tally.pending) notes.push(t("metric.pendingShort", { n: tally.pending }));
+				if (tally.stale) notes.push(t("metric.staleShort", { n: tally.stale }));
 				if (tally.unmatched) notes.push(t("metric.unmatchedShort", { n: tally.unmatched }));
 				if (tally.skipped) notes.push(t("metric.skipShort", { n: tally.skipped }));
 				const expanded = !!open[key];
@@ -1843,6 +1847,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 			const pct = located && total ? Math.round((applied / total) * 100) : 0;
 			const metricNotes = [];
 			if (tally.pending) metricNotes.push(t("metric.pendingShort", { n: tally.pending }));
+			if (tally.stale) metricNotes.push(t("metric.staleShort", { n: tally.stale }));
 			if (tally.unmatched) metricNotes.push(t("metric.unmatchedShort", { n: tally.unmatched }));
 			if (tally.skipped) metricNotes.push(t("metric.skipShort", { n: tally.skipped }));
 
