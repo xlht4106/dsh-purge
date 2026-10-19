@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { signingPayload, SIGNATURE_SUFFIX } from "../lib/release-signature.js";
+import { isOpenSshPrivateKey, openSshEd25519ToPkcs8 } from "../lib/openssh-key.js";
 
 function usage() {
   console.error("usage: RELEASE_SIGNING_KEY=<path|pem> node scripts/sign-release.mjs <archive> <version>");
@@ -37,12 +38,21 @@ if (!rawKey || rawKey.trim() === "") {
   process.exit(2);
 }
 
-// Accept either a path to a PEM file or the PEM itself (CI secrets are usually the
-// literal content, local runs usually pass a path).
+// Accept a path to a key file, or the key material itself (CI secrets are usually
+// the literal content, local runs usually pass a path). Both PKCS8 PEM and
+// OpenSSH-format keys are supported — password managers hand out the latter.
 let privateKey;
 try {
-  const pem = fs.existsSync(rawKey) ? fs.readFileSync(rawKey, "utf8") : rawKey;
-  privateKey = crypto.createPrivateKey({ key: pem, format: "pem" });
+  const material = fs.existsSync(rawKey) ? fs.readFileSync(rawKey, "utf8") : rawKey;
+  if (isOpenSshPrivateKey(material)) {
+    privateKey = crypto.createPrivateKey({
+      key: openSshEd25519ToPkcs8(material).pkcs8Pem,
+      format: "pem",
+    });
+    console.error("note: imported an OpenSSH-format key (converted to PKCS8 in memory)");
+  } else {
+    privateKey = crypto.createPrivateKey({ key: material, format: "pem" });
+  }
 } catch (e) {
   console.error(`cannot read signing key: ${e.message}`);
   process.exit(2);

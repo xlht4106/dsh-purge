@@ -1,23 +1,22 @@
 #!/usr/bin/env node
 /**
- * Guided key setup: generate, verify, back up, then wire the public key in.
+ * Wire a release-signing key into the plugin.
  *
- * The first attempt at this lost the private key because the printed instructions
- * told the user to delete it *before* confirming a backup existed. This script
- * reverses that order and refuses to continue unless the backup is real.
+ * Two modes:
  *
  *   node scripts/setup-signing-key.mjs
+ *       Generate a fresh Ed25519 pair, back it up outside the repo, verify the
+ *       backup works, then write the public key into lib/release-signature.js.
  *
- * Steps:
- *   1. refuse to run if a key file already exists (no silent overwrite)
- *   2. generate an Ed25519 pair and self-test it
- *   3. write the private key to a backup directory OUTSIDE the repo
- *   4. re-read the backup and prove it signs/verifies, then print a fingerprint
- *   5. only then write the public key into lib/release-signature.js
- *   6. print the exact `gh secret set` command for PowerShell
+ *   node scripts/setup-signing-key.mjs --import <openssh-key-file>
+ *       Import an existing OpenSSH Ed25519 private key (e.g. one exported from a
+ *       password manager's "generate SSH key" feature). Converts it to PKCS8 for
+ *       local signing and writes the matching public key into the module.
  *
- * The private key is never deleted by this script. Deleting it is a separate,
- * deliberate step the operator takes after storing the backup.
+ * Why the ordering matters: an earlier version of these instructions told the
+ * operator to delete the private key *before* confirming a backup existed. That
+ * lost the key outright. This script never deletes anything and refuses to
+ * continue unless it has proven the key material is readable and usable.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -25,32 +24,143 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isOpenSshPrivateKey, openSshEd25519ToPkcs8 } from "../lib/openssh-key.js";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const KEY_IN_REPO = path.join(ROOT, "dsh-purge-signing.key");
 const SIG_MODULE = path.join(ROOT, "lib", "release-signature.js");
+const BACKUP_DIR = path.join(os.homedir(), "dsh-purge-signing-backup");
+const BACKUP_KEY = path.join(BACKUP_DIR, "dsh-purge-signing.key");
+
+const PLACEHOLDER_BLOCK =
+  "export const TRUSTED_KEYS = [\n" +
+  "  // Placeholder replaced by `node scripts/generate-signing-key.mjs`.\n" +
+  "  // Until a real key is present, tag releases cannot be verified and installs from\n" +
+  "  // a tag are refused with a clear message instead of silently trusting the bytes.\n" +
+  "  {\n" +
+  '    id: "dev-placeholder",\n' +
+  '    publicKey: "",\n' +
+  "  },\n" +
+  "];";
 
 function fail(message) {
   console.error(`\n✗ ${message}\n`);
   process.exit(1);
 }
 
-function fingerprint(publicB64) {
-  const der = Buffer.from(publicB64, "base64");
-  return crypto.createHash("sha256").update(der).digest("hex").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
+/** Replace the placeholder keyring with a real public key. Refuses to guess. */
+function writePublicKey(publicB64) {
+  const source = fs.readFileSync(SIG_MODULE, "utf8");
+  if (!source.includes(PLACEHOLDER_BLOCK)) {
+    fail(
+      "lib/release-signature.js 的 TRUSTED_KEYS 已不是占位形态。\n" +
+        "  可能已经填过公钥，或文件被改过。请手动检查；本脚本不猜测、不覆盖。",
+    );
+  }
+  const replacement =
+    "export const TRUSTED_KEYS = [\n" +
+    `  // 生成于 ${new Date().toISOString().slice(0, 10)}，指纹见 docs/update-signing.md。\n` +
+    "  // 轮换时新增一项，不要替换现有项（见该文档「密钥轮换」）。\n" +
+    "  {\n" +
+    '    id: "release-2026",\n' +
+    `    publicKey:\n      "${publicB64}",\n` +
+    "  },\n" +
+    "];";
+  fs.writeFileSync(SIG_MODULE, source.replace(PLACEHOLDER_BLOCK, replacement), "utf8");
+  console.log("✓ 公钥已写入 lib/release-signature.js");
 }
 
-console.log("dsh-purge 签名密钥设置\n");
+function printHandover(privateKeyPath, publicB64) {
+  const der = Buffer.from(publicB64, "base64");
+  const fp = crypto.createHash("sha256").update(der).digest("hex");
+  console.log(`
+公钥（SPKI base64）：${publicB64}
+密钥指纹（SPKI SHA-256）：${fp.slice(0, 16).replace(/(.{4})/g, "$1 ").trim()}
 
-// ── 1. never overwrite ────────────────────────────────────────────────────────
-if (fs.existsSync(KEY_IN_REPO)) {
+接下来三步：
+
+  1. 把私钥存进密码管理器 / 离线介质。
+
+  2. 设进 GitHub Secrets（PowerShell 语法，注意不是 < 重定向）：
+
+       Get-Content "${privateKeyPath}" -Raw | gh secret set RELEASE_SIGNING_KEY
+
+     验证：gh secret list
+
+  3. 确认上面两步都成功之后，才删除本地私钥：
+
+       Remove-Item "${privateKeyPath}"
+
+  提交：
+
+       git add lib/release-signature.js
+       git commit -m "feat: 启用发布验签公钥"
+
+验证：
+
+       node -e "import('./lib/release-signature.js').then(m=>console.log('trusted key:', m.hasTrustedKey()))"
+`);
+}
+
+// ── import mode ───────────────────────────────────────────────────────────────
+const importIndex = process.argv.indexOf("--import");
+if (importIndex !== -1) {
+  const src = process.argv[importIndex + 1];
+  if (!src) fail("--import 需要一个私钥文件路径");
+  const file = path.resolve(src);
+  if (!fs.existsSync(file)) fail(`文件不存在：${file}`);
+
+  const text = fs.readFileSync(file, "utf8");
+  if (!isOpenSshPrivateKey(text)) {
+    fail(
+      "这不是 OpenSSH 私钥（缺 -----BEGIN OPENSSH PRIVATE KEY-----）。\n" +
+        "  如果它已经是 PKCS8 PEM，直接用 RELEASE_SIGNING_KEY 指向它即可，无需导入。",
+    );
+  }
+
+  let imported;
+  try {
+    imported = openSshEd25519ToPkcs8(text);
+  } catch (e) {
+    fail(`导入失败：${e.message}`);
+  }
+  console.log("✓ OpenSSH 私钥解析成功，签名/验签自检通过");
+  console.log(`✓ OpenSSH 指纹：SHA256:${imported.sshFingerprint}`);
+
+  // Persist the PKCS8 form outside the repo so local signing works.
+  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 });
+  const target = path.join(BACKUP_DIR, "dsh-purge-signing.key");
+  if (fs.existsSync(target)) {
+    fail(
+      `备份目录里已有私钥：${target}\n` +
+        "  先确认它是否还需要，移走后再导入，避免覆盖。",
+    );
+  }
+  fs.writeFileSync(target, imported.pkcs8Pem, { mode: 0o600 });
+  fs.writeFileSync(`${target}.pub`, `${imported.publicB64}\n`, "utf8");
+
+  // Prove the written file is usable before wiring anything.
+  const reread = crypto.createPrivateKey({ key: fs.readFileSync(target, "utf8"), format: "pem" });
+  const sample = Buffer.from("post-write check", "utf8");
+  const pub = crypto.createPublicKey(reread);
+  if (!crypto.verify(null, sample, pub, crypto.sign(null, sample, reread))) {
+    fail(`写出的私钥不可用：${target} —— 不要删除任何东西，先检查磁盘。`);
+  }
+  console.log(`✓ PKCS8 私钥已写入仓库外：${target}`);
+
+  writePublicKey(imported.publicB64);
+  printHandover(target, imported.publicB64);
+  process.exit(0);
+}
+
+// ── generate mode ─────────────────────────────────────────────────────────────
+console.log("dsh-purge 签名密钥设置\n");
+if (fs.existsSync(BACKUP_KEY)) {
   fail(
-    `已存在 ${KEY_IN_REPO}\n` +
-      "  如果这是你正在用的密钥，请先备份并删除它，再重跑本脚本。\n" +
-      "  覆盖会让已发布的签名全部失效。",
+    `已存在 ${BACKUP_KEY}\n` +
+      "  如果这是正在用的密钥，先备份并移走，再重跑。覆盖会让已发布的签名全部失效。",
   );
 }
 
-// ── 2. generate + self-test ───────────────────────────────────────────────────
 const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
 const privatePem = privateKey.export({ format: "pem", type: "pkcs8" });
 const publicB64 = publicKey.export({ format: "der", type: "spki" }).toString("base64");
@@ -61,87 +171,16 @@ if (!crypto.verify(null, sample, publicKey, crypto.sign(null, sample, privateKey
 }
 console.log("✓ 已生成 Ed25519 密钥对并通过自检");
 
-// ── 3. back up OUTSIDE the repo, before anything else ─────────────────────────
-const backupDir = path.join(os.homedir(), "dsh-purge-signing-backup");
-fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
-const backupKey = path.join(backupDir, "dsh-purge-signing.key");
-const backupPub = path.join(backupDir, "dsh-purge-signing.key.pub");
-if (fs.existsSync(backupKey)) {
-  fail(
-    `备份目录里已有旧密钥：${backupKey}\n` +
-      "  先把它移到别处（或确认不再需要），否则会把新密钥覆盖到旧备份上。",
-  );
-}
-fs.writeFileSync(backupKey, privatePem, { mode: 0o600 });
-fs.writeFileSync(backupPub, `${publicB64}\n`, "utf8");
-console.log(`✓ 私钥已备份到仓库外：${backupKey}`);
+fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 });
+fs.writeFileSync(BACKUP_KEY, privatePem, { mode: 0o600 });
+fs.writeFileSync(`${BACKUP_KEY}.pub`, `${publicB64}\n`, "utf8");
+console.log(`✓ 私钥已备份到仓库外：${BACKUP_KEY}`);
 
-// ── 4. prove the backup is usable ─────────────────────────────────────────────
-const reread = crypto.createPrivateKey({ key: fs.readFileSync(backupKey, "utf8"), format: "pem" });
-const rereadPub = crypto.createPublicKey(reread);
-if (!crypto.verify(null, sample, rereadPub, crypto.sign(null, sample, reread))) {
-  fail(`备份文件不可用：${backupKey}\n  不要删除任何东西，先检查磁盘。`);
+const reread = crypto.createPrivateKey({ key: fs.readFileSync(BACKUP_KEY, "utf8"), format: "pem" });
+if (!crypto.verify(null, sample, crypto.createPublicKey(reread), crypto.sign(null, sample, reread))) {
+  fail(`备份文件不可用：${BACKUP_KEY}\n  不要删除任何东西，先检查磁盘。`);
 }
 console.log("✓ 备份文件已验证可用（重新读取后签名/验签通过）");
 
-// ── 5. wire the public key into the module ────────────────────────────────────
-const source = fs.readFileSync(SIG_MODULE, "utf8");
-const block =
-  "export const TRUSTED_KEYS = [\n" +
-  "  // Placeholder replaced by `node scripts/generate-signing-key.mjs`.\n" +
-  "  // Until a real key is present, tag releases cannot be verified and installs from\n" +
-  "  // a tag are refused with a clear message instead of silently trusting the bytes.\n" +
-  "  {\n" +
-  '    id: "dev-placeholder",\n' +
-  '    publicKey: "",\n' +
-  "  },\n" +
-  "];";
-if (!source.includes(block)) {
-  fail(
-    "lib/release-signature.js 里的 TRUSTED_KEYS 占位块已不是预期形态。\n" +
-      "  可能已经填过公钥，或文件被改过。请手动检查，本脚本不猜测。",
-  );
-}
-const replacement =
-  "export const TRUSTED_KEYS = [\n" +
-  "  // 生成于 " + new Date().toISOString().slice(0, 10) + "，指纹见 docs/update-signing.md。\n" +
-  "  // 轮换时新增一项，不要替换现有项（见该文档「密钥轮换」）。\n" +
-  "  {\n" +
-  '    id: "release-2026",\n' +
-  `    publicKey:\n      "${publicB64}",\n` +
-  "  },\n" +
-  "];";
-fs.writeFileSync(SIG_MODULE, source.replace(block, replacement), "utf8");
-console.log("✓ 公钥已写入 lib/release-signature.js");
-
-// ── 6. hand over the remaining manual steps ──────────────────────────────────
-const fp = fingerprint(publicB64);
-console.log(`
-密钥指纹（SHA-256 前 16 字节）：${fp}
-
-接下来三步，按顺序做：
-
-  1. 把私钥存进密码管理器 / 离线介质（备份已在上面那个目录里，
-     但真正的安全副本应该离开这台机器）。
-
-  2. 设进 GitHub Secrets（PowerShell 语法，注意不是 < 重定向）：
-
-       Get-Content "${backupKey}" -Raw | gh secret set RELEASE_SIGNING_KEY
-
-     验证：
-
-       gh secret list
-
-  3. 确认上面两步都成功之后，才删除本地私钥：
-
-       Remove-Item "${backupKey}"
-
-  然后提交：
-
-       git add lib/release-signature.js
-       git commit -m "feat: 启用发布验签公钥"
-
-验证验签已就绪：
-
-       node -e "import('./lib/release-signature.js').then(m=>console.log('trusted key:', m.hasTrustedKey()))"
-`);
+writePublicKey(publicB64);
+printHandover(BACKUP_KEY, publicB64);
