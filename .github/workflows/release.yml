@@ -2,8 +2,13 @@ name: Release
 
 on:
   push:
+    # `mit-1.1.72` is the maintained line for this fork: upstream moved to a
+    # commercial license and `master` now carries that, while this branch keeps the
+    # MIT-based work. Release from it, otherwise pushing would never build anything.
     branches:
+      - mit-1.1.72
       - master
+  workflow_dispatch:
 
 permissions:
   contents: write

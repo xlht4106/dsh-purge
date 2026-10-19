@@ -81,8 +81,8 @@
     },
     "install": {
       "preferred": "tarball",
-      "tarball": "https://github.com/xlht4106/dsh-purge/archive/refs/heads/master.tar.gz",
-      "zip": "https://github.com/xlht4106/dsh-purge/archive/refs/heads/master.zip",
+      "tarball": "https://github.com/xlht4106/dsh-purge/archive/refs/heads/mit-1.1.72.tar.gz",
+      "zip": "https://github.com/xlht4106/dsh-purge/archive/refs/heads/mit-1.1.72.zip",
       "git": "https://github.com/xlht4106/dsh-purge.git"
     }
   },
