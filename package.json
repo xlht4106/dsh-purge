@@ -63,6 +63,7 @@
   "bugs": {
     "url": "https://github.com/YuJunZhiXue/dsh-purge/issues"
   },
+  "_upstream": "本仓库是 YuJunZhiXue/dsh-purge 的 fork。repository/homepage/bugs 指向原作者仓库，是 README「署名要求」的一部分，不要改。功能性的发布源在 dsh.install 与 lib/update.js。",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -79,9 +80,9 @@
     },
     "install": {
       "preferred": "tarball",
-      "tarball": "https://github.com/YuJunZhiXue/dsh-purge/archive/refs/heads/master.tar.gz",
-      "zip": "https://github.com/YuJunZhiXue/dsh-purge/archive/refs/heads/master.zip",
-      "git": "https://github.com/YuJunZhiXue/dsh-purge.git"
+      "tarball": "https://github.com/xlht4106/dsh-purge/archive/refs/heads/master.tar.gz",
+      "zip": "https://github.com/xlht4106/dsh-purge/archive/refs/heads/master.zip",
+      "git": "https://github.com/xlht4106/dsh-purge.git"
     }
   },
   "publishConfig": {

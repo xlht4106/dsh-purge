@@ -20,11 +20,11 @@
 
 ## 二、一个必须先讲清的技术前提
 
-当前的下载源是 GitHub 的**自动 archive**：
+改造前的下载源是 GitHub 的**自动 archive**：
 
 ```
-https://codeload.github.com/YuJunZhiXue/dsh-purge/zip/refs/heads/master
-https://codeload.github.com/YuJunZhiXue/dsh-purge/zip/refs/tags/v1.1.72
+https://codeload.github.com/<repo>/zip/refs/heads/master
+https://codeload.github.com/<repo>/zip/refs/tags/v1.1.72
 ```
 
 GitHub 官方说明：自动生成的 archive 其校验和**会随时间变化**（内部打包实现调整），因此**无法预先签名**。
@@ -37,6 +37,23 @@ GitHub 官方说明：自动生成的 archive 其校验和**会随时间变化**
 | --- | --- | --- |
 | tag 发布版（`v1.1.72`） | `releases/download/v1.1.72/dsh-purge-1.1.72.zip` | **强制** |
 | 分支 / commit（`master`、`abc123…`） | `codeload.github.com/.../zip/...` | 可选，未签名则标记 `unverified` |
+
+### 发布源改成了本 fork
+
+上游 `YuJunZhiXue/dsh-purge` 已声明「暂停更新」，而且本机对它的权限是 **READ** —— `release.yml` 的 `if: github.repository == ...` 在那里不会运行，签名产物也就不可能产生。
+
+因此：
+
+| 位置 | 值 |
+| --- | --- |
+| `lib/update.js` 的 `DEFAULT_REPO` | `xlht4106/dsh-purge` |
+| `release.yml` 的 `if` | `github.repository == 'xlht4106/dsh-purge'` |
+| `package.json` 的 `dsh.install.*` | 指向 `xlht4106/dsh-purge` |
+| 覆盖方式 | `DSH_PURGE_REPO=<owner>/<name>` 环境变量 |
+
+`package.json` 的 `repository` / `homepage` / `bugs` **仍然指向上游**——那是 README「署名要求」的一部分，不是功能路径，改掉等于抹去来源。
+
+> 同步上游时的注意点：如果上游以后恢复了发布，改回 `DEFAULT_REPO` 并同步 `release.yml` 的 `if` 即可；两边必须一致，否则会出现「更新去 A 仓库找产物、CI 在 B 仓库签名」的错配。
 
 ---
 
@@ -89,17 +106,48 @@ Generated Ed25519 signing key pair.
 
 脚本会做一次自测（签名再验签），确保密钥对可用。
 
-### 5.2 三个去处
+### 5.2 用引导脚本一步做完（推荐）
+
+```powershell
+cd H:\coding\dsh-purge
+node scripts/setup-signing-key.mjs
+```
+
+这个脚本和 `generate-signing-key.mjs` 的区别是**顺序安全**：它会先把私钥写到仓库外的备份目录并**重新读取验证可用**，确认之后才把公钥写进代码，最后打印指纹和后续命令。它**不会**删除私钥——删不删由你决定。
+
+本机已用它生成并启用了一把密钥：
+
+| 项 | 值 |
+| --- | --- |
+| key id | `release-2026` |
+| 公钥（base64 SPKI） | `MCowBQYDK2VwAyEAFuy2o5IdyuspyVQ+kqcSUGt/xgDZ0OEq38rBgUsE6Pw=` |
+| 指纹（SHA-256 前 16 字节） | `9ec5 f77c 94ae f0c5` |
+| 完整 SHA-256 | `9ec5f77c94aef0c5a12c76322740398925f39df19e58508910595ed232444125` |
+| 私钥位置 | `%USERPROFILE%\dsh-purge-signing-backup\dsh-purge-signing.key`（仓库外） |
+| GitHub Secret | 已设到 `xlht4106/dsh-purge` 的 `RELEASE_SIGNING_KEY` |
+
+### 5.3 手动做（等价步骤）
 
 **① 私钥 → GitHub Secrets**
 
+PowerShell 里 `<` 是保留运算符，**不能用 bash 的重定向写法**：
+
 ```powershell
-gh secret set RELEASE_SIGNING_KEY < dsh-purge-signing.key
+# 正确
+Get-Content "$env:USERPROFILE\dsh-purge-signing-backup\dsh-purge-signing.key" -Raw |
+  gh secret set RELEASE_SIGNING_KEY
+
+# 或者
+gh secret set RELEASE_SIGNING_KEY --body (Get-Content <path> -Raw)
+```
+
+验证：
+
+```powershell
+gh secret list
 ```
 
 **② 公钥 → 代码里**
-
-把脚本打印的 `publicKey` 填进 `lib/release-signature.js` 的 `TRUSTED_KEYS`：
 
 ```js
 export const TRUSTED_KEYS = [
@@ -110,17 +158,18 @@ export const TRUSTED_KEYS = [
 ];
 ```
 
-**③ 私钥离线备份，然后删掉本地文件**
+**③ 私钥离线备份，然后才删掉本地文件**
 
 ```powershell
-Remove-Item dsh-purge-signing.key
+# 确认 Secrets 已设、且你已在密码管理器里存好，再执行
+Remove-Item "$env:USERPROFILE\dsh-purge-signing-backup\dsh-purge-signing.key"
 ```
 
 `dsh-purge-signing.key`、`*.pem`、`*.key` 已加入 `.gitignore`，不会误提交。
 
-> **现在代码里是占位公钥（`id: "dev-placeholder"`, `publicKey: ""`）。** 在你填入真实公钥之前，tag 版更新会被拒绝并提示「没有可用的信任公钥」。这是刻意的 fail-closed：宁可装不上，也不装不可信的字节。
+> **踩过的坑**：第一次设置时按旧文档先删了私钥，结果既没备份也没进 Secrets，那对密钥直接作废（Ed25519 私钥无法从公钥反推）。因为当时还没签过任何产物，重生成零成本。`setup-signing-key.mjs` 就是为了避免这个顺序错误而写的。
 
-### 5.3 发布时自动签名
+### 5.4 发布时自动签名
 
 `release.yml` 新增一步，在打包上传后立刻签名：
 

@@ -5,6 +5,7 @@ import * as core from "../lib/core.js";
 import * as rules from "../lib/rules.js";
 import { hindsightReport } from "../lib/hindsight-compat.js";
 import { hasTrustedKey } from "../lib/release-signature.js";
+import { repoSlug } from "../lib/update.js";
 
 const args = process.argv.slice(2);
 
@@ -48,6 +49,7 @@ function printStatus(state) {
   out.push(`  注入文件       ${state.override_path}`);
   out.push(`  注入状态       ${state.override_status}`);
   // 更新验签：没有内置公钥时，tag 发布版一律装不上，用户需要知道原因。
+  out.push(`  发布源         ${repoSlug()}（DSH_PURGE_REPO 可覆盖）`);
   out.push(
     `  更新验签       ${hasTrustedKey() ? "已配置公钥 / trusted key present" : "未配置公钥 / no trusted key（发布版更新会被拒绝）"}`,
   );

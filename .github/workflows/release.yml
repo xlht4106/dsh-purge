@@ -14,7 +14,10 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'YuJunZhiXue/dsh-purge'
+    # Release 只在「发布源仓库」跑。这里不再写死上游，而是跟着 lib/update.js 的
+    # 默认发布源走：上游已暂停更新，签名产物必须由我们自己的仓库产出。
+    # 同步上游时若改了 update.js 的 DEFAULT_REPO，记得同步这一行。
+    if: github.repository == 'xlht4106/dsh-purge'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
