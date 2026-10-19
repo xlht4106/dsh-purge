@@ -29,11 +29,9 @@
   <a href="README.md">中文</a> · <a href="README.en.md"><strong>English</strong></a>
 </p>
 
-> **Maintenance paused.**
+> **This repository is a fork, maintained independently.** It tracks the MIT-licensed version of [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) and has been developed independently since **1.1.72**. The original author paused maintenance and relicensed upstream under a commercial license, so this repository **does not merge upstream** — it only maintains this MIT line. See [Attribution required](#attribution-required) below.
 >
-> Work has to come first for a while, so this project is on hold: no new releases, issues / PRs are not being triaged, and newer dsh versions are not guaranteed. What is already published stays usable. When maintenance resumes, it will be noted at the top of this README.
->
-> This has always been an after-hours project. If it helped you, the [sponsor](#sponsor) addresses are below. README [ad slots](#ad) are also open, to help keep the lights on.
+> The original author's maintenance notice, sponsor addresses and ad slots are kept below; they are the original author's, and this fork does not collect on their behalf.
 
 > **Official Web and the official desktop app are both supported.** Official `dsh web` uses profile `web`. The official desktop EXE (DeepSeek Harness **0.2.1-rc.2**) uses profile `desktop`. Install and Apply them separately. This release targets dsh 0.2 only (`engines.dsh` pins `>=0.2.0-rc.2 <0.3.0`). Older dsh builds need the matching older plugin. Community Desktop is not maintained.
 >

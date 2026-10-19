@@ -29,7 +29,9 @@
   <a href="README.md"><strong>中文</strong></a> · <a href="README.en.md">English</a>
 </p>
 
-> **暂时停更。** 原作者因工作安排，项目维护暂时搁置：不再发版、暂不收 issue / PR。本仓库是其 MIT 版本的分支，由 fork 维护者继续维护；赞助与广告位见原文。
+> **本仓库是 fork，独立维护中。** 基于 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的 MIT 版本，自 **1.1.72** 起由本仓库维护者独立开发。原作者已暂停维护并把上游改为商业许可，因此本仓库**不再合并上游**，只维护这条 MIT 线。来源与署名要求见下方「[署名要求](#署名要求)」。
+>
+> 上游原有的停更说明、赞助与广告位信息保留在下文，那是原作者的内容，本仓库不代为接收赞助。
 >
 > **官方 Web 和官方桌面端都支持。** 官方 `dsh web` 用 profile `web`；官方桌面 EXE（DeepSeek Harness **0.2.1-rc.2**）用 profile `desktop`。两边分开安装、分开点「应用」。当前版本适配 dsh 0.2（`engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`）；更早的 dsh 用对应的老版本插件。社区桌面端不维护。
 >

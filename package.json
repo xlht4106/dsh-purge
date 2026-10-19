@@ -1,7 +1,7 @@
 {
   "name": "dsh-purge",
   "version": "1.1.72",
-  "description": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分",
+  "description": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 基于 YuJunZhiXue/dsh-purge 的 MIT 版本 fork，自 1.1.72 起独立维护；来源与署名见 README。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -58,13 +58,16 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YuJunZhiXue/dsh-purge.git"
+    "url": "git+https://github.com/xlht4106/dsh-purge.git"
   },
-  "homepage": "https://github.com/YuJunZhiXue/dsh-purge#readme",
+  "homepage": "https://github.com/xlht4106/dsh-purge#readme",
   "bugs": {
-    "url": "https://github.com/YuJunZhiXue/dsh-purge/issues"
+    "url": "https://github.com/xlht4106/dsh-purge/issues"
   },
-  "_upstream": "本仓库是 YuJunZhiXue/dsh-purge 的 fork。repository/homepage/bugs 指向原作者仓库，是 README「署名要求」的一部分，不要改。功能性的发布源在 dsh.install 与 lib/update.js。",
+  "_upstream": {
+    "repo": "https://github.com/YuJunZhiXue/dsh-purge",
+    "note": "本仓库是 YuJunZhiXue/dsh-purge 的 MIT 版本 fork，自 1.1.72 起独立维护，不再合并上游（上游已改为商业许可）。署名与来源要求见 README「署名要求」，LICENSE 的版权行不得移除。"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
