@@ -41,11 +41,7 @@
 
 ## Contents
 
-- [Sponsor](#sponsor)
-- [Ad slots](#ad)
 - [What this is](#what-this-is)
-- [Attribution required](#attribution-required)
-- [Unauthorized commercial use](#unauthorized-commercial-use)
 - [Supported hosts](#supported-hosts)
 - [Install](#install)
 - [Preview](#preview)
@@ -54,37 +50,9 @@
 - [How it works](#how-it-works)
 - [Restore](#restore)
 - [Releases](#releases)
-
----
-
-<a id="sponsor"></a>
-
-## ☕ Sponsor
-
-If this project helps you, send it over — I'm out here asking~
-
-| Asset | Address |
-| --- | --- |
-| USDT (TRC20) | `TV5ajPkRD8RH623Dx9mqvYZVNN8nPGRKid` |
-| Solana | `6x16GhRgLVpKFFXaU1seKNdx2rypspSJTL4dbpt6Xpwk` |
-| Ethereum | `0xB68BD60C0e8c519513B7DF9bB147696815423B3E` |
-| Bitcoin | `bc1qu70yxkrtwnymt8ryluz9x8y8hqzune5340npht` |
-
----
-
-<a id="ad"></a>
-
-## Ad slots
-
-This README gets steady traffic. A few placements are open; proceeds go toward after-hours upkeep.
-
-| Placement | Status |
-| --- | --- |
-| Above the sponsor block (text link + one-line blurb, or a small image) | **Open** |
-
-Slots are limited and go live after we agree. No gray-market, piracy, impersonation of this repo, or pure traffic-farm listings.
-
-For placement, email [a2269198325@163.com](mailto:a2269198325@163.com) or message [@YuJunZhiXue](https://github.com/YuJunZhiXue) on GitHub. Put `dsh-purge ad slot` in the subject.
+- [Attribution required](#attribution-required)
+- [Legal and compliance disclaimer](#-strict-legal-and-compliance-disclaimer)
+- [Appendix: original author](#appendix-original-author)
 
 ---
 
@@ -108,36 +76,18 @@ It only touches the official `@deepseek-ai` packages and local config on the use
 
 ---
 
-## Non-profit public project. Commercial sale, paid resale, and profit from illegal or gray-market activity are forbidden. For technical reference only.
-
 ## Attribution required
 
 **If you borrow this project's name, ideas, code, or prompts, you must credit the author and name the source repository:** [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge).
 
 Using them without attribution, hiding the source, or passing them off as your own will be pursued.
 
----
+This repository is a fork of that project under MIT and is bound by the same rule: the copyright line in `LICENSE` must stay, and the source repository must be named.
 
-## Unauthorized commercial use
-
-Douyin live account **「老张的ai」** (room name **「老张AI讲堂」**) is selling this repository: taking fees in the live room, no attribution, and ignoring the non-profit rule above. The author was in the room. They still charged.
-
-This project is free and non-profit. Selling courses, the plugin, tokens, or reselling it voids the license on the spot. The author reserves the right to pursue it.
-
-Recorded 2026-10-12:
-
-<p align="center">
-  <img src="docs/notice/laozhang-live-1.jpg" width="360" alt="老张的ai live asking for a fee">
-  <img src="docs/notice/laozhang-live-2.jpg" width="360" alt="老张的ai live charging money">
-</p>
-
-WeChat name **「老张的ai科技」**, same handle as the live-room viewer board. Asked if they were this repo's developer, they said they were. The author said they would report it.
-
-<p align="center">
-  <img src="docs/notice/laozhang-wechat-1.jpg" width="420" alt="老张的ai科技 WeChat claiming to be the developer">
-</p>
+> 📌 Upstream notice: this project is a non-profit public project. Commercial sale, paid resale, and profit from illegal or gray-market activity are forbidden. For technical reference only.
 
 ---
+
 
 <a id="strict-legal--compliance-disclaimer"></a>
 
@@ -298,7 +248,7 @@ $cands | Select-Object -Unique | Where-Object { $_ -and (Test-Path (Join-Path $_
 git clone https://github.com/xlht4106/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
 ```
 
-Without git: download [master.tar.gz](https://github.com/xlht4106/dsh-purge/archive/refs/heads/mit-1.1.72.tar.gz), extract, rename `dsh-purge-master` → `dsh-purge`, and place it under `plugins`. If you already have a clone, copy the whole tree — not a few `.js` files.
+Without git: download [mit-1.1.72.tar.gz](https://github.com/xlht4106/dsh-purge/archive/refs/heads/mit-1.1.72.tar.gz), extract, rename `dsh-purge-mit-1.1.72` → `dsh-purge`, and place it under `plugins`. If you already have a clone, copy the whole tree — not a few `.js` files.
 
 **3. Edit only that profile's `package.json` — back it up first.** Web → `$DSH_HOME/profiles/web/package.json`; desktop → `$DSH_HOME/profiles/desktop/package.json`. Add **only two things**, keeping every existing dependency and bundle:
 
@@ -603,8 +553,61 @@ What changed, and the zip, are on [Releases](https://github.com/xlht4106/dsh-pur
 - Scope is rendered copy, defaults, and runtime logic inside local `@deepseek-ai/*` packages, plus override files and rule sets under the harness home.
 - After an upgrade, unmatched originals show as skipped. Apply still completes, and those files are left unchanged.
 - Third-party plugin *source repos* outside `@deepseek-ai` are left alone (CMD silence may **best-effort** patch installed doctor / market / liangshen / mnemon at runtime).
-- Install the npm package `dsh-purge`: `dsh plugin --profile web add dsh-purge` or `dsh plugin --profile desktop add dsh-purge`. From this repo, `add .`. If the registry is blocked, add the master.tar.gz URL instead. Hub one-click uses the same npm package.
+- Install the npm package `dsh-purge`: `dsh plugin --profile web add dsh-purge` or `dsh plugin --profile desktop add dsh-purge`. From this repo, `add .`. If the registry is blocked, add the mit-1.1.72.tar.gz URL instead. Hub one-click uses the same npm package.
 
 ---
 
 Thanks to the [LINUX DO](https://linux.do) community
+
+---
+
+<a id="appendix-original-author"></a>
+
+## Appendix: original author
+
+The content below comes from the upstream README and belongs to the original author. It is kept verbatim for reference; **this fork does not accept sponsorships, ad placements, or partnerships on their behalf**.
+
+#### Sponsor
+
+If this project helps you, send it over — I'm out here asking~
+
+| Asset | Address |
+| --- | --- |
+| USDT (TRC20) | `TV5ajPkRD8RH623Dx9mqvYZVNN8nPGRKid` |
+| Solana | `6x16GhRgLVpKFFXaU1seKNdx2rypspSJTL4dbpt6Xpwk` |
+| Ethereum | `0xB68BD60C0e8c519513B7DF9bB147696815423B3E` |
+| Bitcoin | `bc1qu70yxkrtwnymt8ryluz9x8y8hqzune5340npht` |
+
+#### Ad slots
+
+This README gets steady traffic. A few placements are open; proceeds go toward after-hours upkeep.
+
+| Placement | Status |
+| --- | --- |
+| Above the sponsor block (text link + one-line blurb, or a small image) | **Open** |
+
+Slots are limited and go live after we agree. No gray-market, piracy, impersonation of this repo, or pure traffic-farm listings.
+
+For placement, email [a2269198325@163.com](mailto:a2269198325@163.com) or message [@YuJunZhiXue](https://github.com/YuJunZhiXue) on GitHub. Put `dsh-purge ad slot` in the subject.
+
+---
+
+#### Unauthorized commercial use
+
+Douyin live account **「老张的ai」** (room name **「老张AI讲堂」**) is selling this repository: taking fees in the live room, no attribution, and ignoring the non-profit rule above. The author was in the room. They still charged.
+
+This project is free and non-profit. Selling courses, the plugin, tokens, or reselling it voids the license on the spot. The author reserves the right to pursue it.
+
+Recorded 2026-10-12:
+
+<p align="center">
+  <img src="docs/notice/laozhang-live-1.jpg" width="360" alt="老张的ai live asking for a fee">
+  <img src="docs/notice/laozhang-live-2.jpg" width="360" alt="老张的ai live charging money">
+</p>
+
+WeChat name **「老张的ai科技」**, same handle as the live-room viewer board. Asked if they were this repo's developer, they said they were. The author said they would report it.
+
+<p align="center">
+  <img src="docs/notice/laozhang-wechat-1.jpg" width="420" alt="老张的ai科技 WeChat claiming to be the developer">
+</p>
+

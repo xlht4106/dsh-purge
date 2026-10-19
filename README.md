@@ -29,9 +29,9 @@
   <a href="README.md"><strong>中文</strong></a> · <a href="README.en.md">English</a>
 </p>
 
-> **本仓库是 fork，独立维护中。** 基于 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的 MIT 版本，自 **1.1.72** 起由本仓库维护者独立开发。原作者已暂停维护并把上游改为商业许可，因此本仓库**不再合并上游**，只维护这条 MIT 线。来源与署名要求见下方「[署名要求](#署名要求)」。
+> **本仓库是 fork，独立维护中。** 基于 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的 MIT 版本，自 **1.1.72** 起由本仓库独立开发。原作者已暂停维护并把上游改为商业许可，所以本仓库**不再合并上游**，只维护这条 MIT 线。
 >
-> 上游原有的停更说明、赞助与广告位信息保留在下文，那是原作者的内容，本仓库不代为接收赞助。
+> 署名、来源与许可证要求见 [署名要求](#署名要求) 与 [LICENSE](LICENSE)。原作者的联系方式与赞助地址保留在 [原文附录](#附录原作者信息)，本仓库不代为接收。
 >
 > **官方 Web 和官方桌面端都支持。** 官方 `dsh web` 用 profile `web`；官方桌面 EXE（DeepSeek Harness **0.2.1-rc.2**）用 profile `desktop`。两边分开安装、分开点「应用」。当前版本适配 dsh 0.2（`engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`）；更早的 dsh 用对应的老版本插件。社区桌面端不维护。
 >
@@ -41,11 +41,7 @@
 
 ## 目录
 
-- [赞助](#sponsor)
-- [广告位](#ad)
 - [介绍](#介绍)
-- [署名要求](#署名要求)
-- [违规商用公示](#违规商用公示)
 - [适配范围](#适配范围)
 - [安装](#安装)
 - [界面](#界面预览)
@@ -54,38 +50,9 @@
 - [工作原理](#工作原理)
 - [还原](#还原)
 - [更新](#更新)
-
----
-
-<a id="sponsor"></a>
-
-## ☕ 赞助
-
-这个项目要是帮到你了，欢迎打赏。我是讨口子，施舍点~
-
-
-| 资产          | 地址                                             |
-| ----------- | ---------------------------------------------- |
-| USDT（TRC20） | `TV5ajPkRD8RH623Dx9mqvYZVNN8nPGRKid`           |
-| Solana      | `6x16GhRgLVpKFFXaU1seKNdx2rypspSJTL4dbpt6Xpwk` |
-| Ethereum    | `0xB68BD60C0e8c519513B7DF9bB147696815423B3E`   |
-| Bitcoin     | `bc1qu70yxkrtwnymt8ryluz9x8y8hqzune5340npht`   |
-
----
-
-<a id="ad"></a>
-
-## 广告位
-
-README 长期有人看，现开放少量展示位。收入用于贴补业余维护。
-
-| 位置 | 状态 |
-| --- | --- |
-| 本页赞助区上方（文字链 + 一句介绍，或一张小图） | **空缺，可定** |
-
-名额少，谈妥再上。不接灰产、盗版、冒充本仓库、纯引流盘。
-
-合作请发邮件 [a2269198325@163.com](mailto:a2269198325@163.com)，或 GitHub [@YuJunZhiXue](https://github.com/YuJunZhiXue) 私信。标题注明「dsh-purge 广告位」。
+- [署名要求](#署名要求)
+- [严正法律免责与合规使用声明](#-严正法律免责与合规使用声明)
+- [附录：原作者信息](#附录原作者信息)
 
 ---
 
@@ -111,34 +78,15 @@ Harness 不只是把问题交给模型。它还会在运行时改提示词、审
 
 ---
 
-## 📌 非盈利公益项目，严禁任何主体用于商业售卖、付费倒卖或黑灰产牟利，仅供技术参考。
-
 ## 署名要求
 
 **借用本项目的名称、思路、代码或提示词，必须署名，并写明来源仓库：** [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)。
 
 不署名、隐瞒来源、改头换面据为己有，作者将依法追究责任。
 
----
+本仓库是上述项目的 MIT 版本 fork，同样受此约束：`LICENSE` 的版权行不得移除，来源仓库必须写明。
 
-## 违规商用公示
-
-抖音直播账号 **「老张的ai」**（直播间显示 **「老张AI讲堂」**）把本仓库当收费货卖：直播间问价、当场收钱，不署名，也不守上面的非盈利条款。作者人就在场，对方照收。
-
-本项目免费、非盈利。拿它卖课、卖插件、卖 token、倒卖，许可当场作废，作者保留追究权利。
-
-2026-10-12 直播记录：
-
-<p align="center">
-  <img src="docs/notice/laozhang-live-1.jpg" width="360" alt="老张的ai 直播问价">
-  <img src="docs/notice/laozhang-live-2.jpg" width="360" alt="老张的ai 直播收钱">
-</p>
-
-对方微信名 **「老张的ai科技」**，直播间观众榜同号。被问到是不是本仓库开发者时，自称「老厉害了」；作者当场表示要投诉。
-
-<p align="center">
-  <img src="docs/notice/laozhang-wechat-1.jpg" width="420" alt="老张的ai科技 微信自称开发者">
-</p>
+> 📌 上游声明：本项目为非盈利公益项目，严禁任何主体用于商业售卖、付费倒卖或黑灰产牟利，仅供技术参考。
 
 ---
 
@@ -297,7 +245,7 @@ $cands | Select-Object -Unique | Where-Object { $_ -and (Test-Path (Join-Path $_
 git clone https://github.com/xlht4106/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
 ```
 
-没有 git：下载 [master.tar.gz](https://github.com/xlht4106/dsh-purge/archive/refs/heads/mit-1.1.72.tar.gz)，解压后把 `dsh-purge-master` 改名为 `dsh-purge`，整夹放到 `plugins` 下。已有本仓库副本就复制整个目录，不要只拷几个 `.js`。
+没有 git：下载 [mit-1.1.72.tar.gz](https://github.com/xlht4106/dsh-purge/archive/refs/heads/mit-1.1.72.tar.gz)，解压后把 `dsh-purge-mit-1.1.72` 改名为 `dsh-purge`，整夹放到 `plugins` 下。已有本仓库副本就复制整个目录，不要只拷几个 `.js`。
 
 **3. 只改对应 profile 的 `package.json`，先备份。** Web → `$DSH_HOME/profiles/web/package.json`；桌面 → `$DSH_HOME/profiles/desktop/package.json`。**只追加两处**，原有依赖和 bundle 全部留着：
 
@@ -604,15 +552,69 @@ flowchart LR
 
 ## 更新
 
-每一版改了什么、安装包在 [Releases](https://github.com/xlht4106/dsh-purge/releases)。发新版时把 `package.json` 的版本号改掉，中英文说明写进 `release-notes.md`，推到 `master` 就会自动打包（并签名）。同一版本再推送不会重复发包。
+每一版改了什么、安装包在 [Releases](https://github.com/xlht4106/dsh-purge/releases)。发新版时把 `package.json` 的版本号改掉，中英文说明写进 `release-notes.md`，推到 `mit-1.1.72` 就会自动打包（并签名）。同一版本再推送不会重复发包。
 
 ## 说明
 
 - 改动范围是本机 `@deepseek-ai/*` 包里的渲染文案、默认策略和执行逻辑，以及用户目录下的覆盖文件与规则集。
 - 升级后原文对不上会显示跳过，这次应用仍算完成，不会乱改。
 - 不改动非 `@deepseek-ai` 的第三方插件源仓库（启动时的 CMD 无感会**尽力**修补已装的 doctor / market / 梁神 / mnemon，属运行时补丁）。
-- 安装走 npm 包名 `dsh-purge`：`dsh plugin --profile web add dsh-purge` 或 `dsh plugin --profile desktop add dsh-purge`。当前目录已是本仓库时 `add .`。registry 上不去再加 master.tar.gz。插件市场一键安装走同一个 npm 包。
+- 安装走 npm 包名 `dsh-purge`：`dsh plugin --profile web add dsh-purge` 或 `dsh plugin --profile desktop add dsh-purge`。当前目录已是本仓库时 `add .`。registry 上不去再加 `mit-1.1.72.tar.gz`。插件市场一键安装走同一个 npm 包。
 
 ---
 
 感谢 [LINUX DO](https://linux.do) 社区
+
+---
+
+<a id="附录原作者信息"></a>
+
+## 附录：原作者信息
+
+以下内容来自上游 README，属于原作者，本仓库原样保留以供查证；**本仓库不代为接收赞助、广告或合作**。
+
+#### 赞助
+
+这个项目要是帮到你了，欢迎打赏。我是讨口子，施舍点~
+
+
+| 资产          | 地址                                             |
+| ----------- | ---------------------------------------------- |
+| USDT（TRC20） | `TV5ajPkRD8RH623Dx9mqvYZVNN8nPGRKid`           |
+| Solana      | `6x16GhRgLVpKFFXaU1seKNdx2rypspSJTL4dbpt6Xpwk` |
+| Ethereum    | `0xB68BD60C0e8c519513B7DF9bB147696815423B3E`   |
+| Bitcoin     | `bc1qu70yxkrtwnymt8ryluz9x8y8hqzune5340npht`   |
+
+#### 广告位
+
+README 长期有人看，现开放少量展示位。收入用于贴补业余维护。
+
+| 位置 | 状态 |
+| --- | --- |
+| 本页赞助区上方（文字链 + 一句介绍，或一张小图） | **空缺，可定** |
+
+名额少，谈妥再上。不接灰产、盗版、冒充本仓库、纯引流盘。
+
+合作请发邮件 [a2269198325@163.com](mailto:a2269198325@163.com)，或 GitHub [@YuJunZhiXue](https://github.com/YuJunZhiXue) 私信。标题注明「dsh-purge 广告位」。
+
+#### 违规商用公示
+
+抖音直播账号 **「老张的ai」**（直播间显示 **「老张AI讲堂」**）把本仓库当收费货卖：直播间问价、当场收钱，不署名，也不守上面的非盈利条款。作者人就在场，对方照收。
+
+本项目免费、非盈利。拿它卖课、卖插件、卖 token、倒卖，许可当场作废，作者保留追究权利。
+
+2026-10-12 直播记录：
+
+<p align="center">
+  <img src="docs/notice/laozhang-live-1.jpg" width="360" alt="老张的ai 直播问价">
+  <img src="docs/notice/laozhang-live-2.jpg" width="360" alt="老张的ai 直播收钱">
+</p>
+
+对方微信名 **「老张的ai科技」**，直播间观众榜同号。被问到是不是本仓库开发者时，自称「老厉害了」；作者当场表示要投诉。
+
+<p align="center">
+  <img src="docs/notice/laozhang-wechat-1.jpg" width="420" alt="老张的ai科技 微信自称开发者">
+</p>
+
+---
+
