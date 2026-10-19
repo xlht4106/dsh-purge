@@ -26,12 +26,18 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <a href="README.zh-CN.md">中文</a>
+  <a href="README.md"><strong>中文</strong></a> · <a href="README.en.md">English</a>
 </p>
 
-> **暂停更新。** 作者因工作安排，近期没有稳定收入，项目维护暂时搁置：不再发版、暂不收 issue / PR，也不保证跟进新版 dsh。仓库仍可自用；赞助见下方。恢复维护时会在本 README 说明。
+> **暂时停更。** 作者因工作安排，近期没有稳定收入，项目维护暂时搁置：不再发版、暂不收 issue / PR。仓库仍可自用；赞助见下方。
 
-> **官方 Web 和官方桌面端都支持。** 官方 `dsh web` 用 profile `web`；官方桌面 EXE（DeepSeek Harness **0.2.1-rc.2**）用 profile `desktop`。两边分开安装、分开点「应用」。当前版本只适配 dsh 0.2（`engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`）；更早的 dsh 用对应的老版本插件。社区桌面端不维护。
+> **官方 Web 和官方桌面端都支持。** 官方 `dsh web` 用 profile `web`；官方桌面 EXE（DeepSeek Harness **0.2.1-rc.2**）用 profile `desktop`。两边分开安装、分开点「应用」。当前版本适配 dsh 0.2（`engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`）；更早的 dsh 用对应的老版本插件。社区桌面端不维护。
+>
+> 这段时间要先把工作安顿好，项目维护先放一放：暂不发新版本，暂不处理 issue / PR，新版 dsh 也不保证跟上。已经发布的版本可以继续用，仓库也还在。等我恢复维护，会写在这篇 README 开头。
+>
+> 这个项目一直是业余在做。若它对你有帮助，欢迎看看下面的 [赞助](#sponsor)；也在征集 README [广告位](#ad)，换一点把项目撑下去的空间。
+
+> **官方 Web 和官方桌面端都支持。** 官方 `dsh web` 用 profile `web`；官方桌面 EXE（DeepSeek Harness **0.2.0-rc.2**）用 profile `desktop`。两边分开安装、分开点「应用」。当前版本只适配 dsh 0.2；更早的 dsh 用对应的老版本插件。社区桌面端不维护。
 >
 > 写进 profile 还不会改宿主。点会话标题旁的 **dsh-purge** → **清洗** → **应用**。成功会自动重启；补丁没打完不重启。重启后新开一轮对话，注入才进当前会话。
 >
@@ -40,6 +46,7 @@
 ## 目录
 
 - [赞助](#sponsor)
+- [广告位](#ad)
 - [介绍](#介绍)
 - [署名要求](#署名要求)
 - [违规商用公示](#违规商用公示)
@@ -68,6 +75,21 @@
 | Ethereum    | `0xB68BD60C0e8c519513B7DF9bB147696815423B3E`   |
 | Bitcoin     | `bc1qu70yxkrtwnymt8ryluz9x8y8hqzune5340npht`   |
 
+---
+
+<a id="ad"></a>
+
+## 广告位
+
+README 长期有人看，现开放少量展示位。收入用于贴补业余维护。
+
+| 位置 | 状态 |
+| --- | --- |
+| 本页赞助区上方（文字链 + 一句介绍，或一张小图） | **空缺，可定** |
+
+名额少，谈妥再上。不接灰产、盗版、冒充本仓库、纯引流盘。
+
+合作请发邮件 [a2269198325@163.com](mailto:a2269198325@163.com)，或 GitHub [@YuJunZhiXue](https://github.com/YuJunZhiXue) 私信。标题注明「dsh-purge 广告位」。
 
 ---
 
@@ -166,11 +188,11 @@ Harness 不只是把问题交给模型。它还会在运行时改提示词、审
 - **dsh 0.2.0**（官方桌面 **0.2.0-rc.2**）：用 **1.1.40 ~ 1.1.71**。1.1.72 同时保留了 0.2.0 的锚点，两边都能用。
 - **dsh 0.1.7**（含 rc.1 / rc.2）：用 **1.1.39** 及更早 —— 在 [Releases](https://github.com/xlht4106/dsh-purge/releases) 里选对应标签。
 
-`package.json` 的 `engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`，宿主会在安装/启用时直接拦下不兼容的版本，而不是装上了才发现补丁不生效。
+`engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`，宿主会在安装/启用时直接拦下不兼容的版本，而不是装上了才发现补丁不生效。
 
 对不上的补丁会显示待应用或跳过，不会乱改文件。
 
-`--status` 里标 **⚠** 的补丁表示「完成标记还在，但新版代码里的原文锚点也还在」——也就是说这条补丁其实没生效（常见于宿主升级后）。重新点一次「应用」即可；如果重应用后仍是 ⚠，说明上游改了实现，需要等插件适配。
+A patch marked **⚠** in `--status` means "the completion marker is present, but the original upstream anchor is back too" — i.e. the patch is not actually in effect (typical after a host upgrade). Apply again; if it stays ⚠, upstream changed the implementation and the plugin needs adapting.
 
 ---
 
@@ -586,7 +608,7 @@ flowchart LR
 
 ## 更新
 
-每一版改了什么、安装包在 [Releases](https://github.com/xlht4106/dsh-purge/releases)。发新版时把 `package.json` 的版本号改掉，中英文说明写进 `release-notes.md`，推到 `master` 就会自动打包。同一版本再推送不会重复发包。
+每一版改了什么、安装包在 [Releases](https://github.com/xlht4106/dsh-purge/releases)。发新版时把 `package.json` 的版本号改掉，中英文说明写进 `release-notes.md`，推到 `master` 就会自动打包（并签名）。同一版本再推送不会重复发包。
 
 ## 说明
 
