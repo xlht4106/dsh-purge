@@ -13,12 +13,20 @@
  *       password manager's "generate SSH key" feature). Converts it to PKCS8 for
  *       local signing and writes the matching public key into the module.
  *
+ *   node scripts/setup-signing-key.mjs --clipboard
+ *       Same, but read the key from the Windows clipboard. Use this when the
+ *       password manager only allows copying the key, not downloading it.
+ *
+ *   node scripts/setup-signing-key.mjs --stdin
+ *       Same, but read from standard input (pipe, or paste then Ctrl+Z + Enter).
+ *
  * Why the ordering matters: an earlier version of these instructions told the
  * operator to delete the private key *before* confirming a backup existed. That
  * lost the key outright. This script never deletes anything and refuses to
  * continue unless it has proven the key material is readable and usable.
  */
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -102,20 +110,53 @@ function printHandover(privateKeyPath, publicB64) {
 }
 
 // ── import mode ───────────────────────────────────────────────────────────────
+// Three ways in, because password managers often offer only "copy" (no download):
+//   --import <file>   read the key from a file
+//   --stdin           read the key from standard input (pipe, or paste + Ctrl+Z/Enter)
+//   --clipboard       read the key from the Windows clipboard (Get-Clipboard)
+// Only the file form is written to disk by the caller; the other two never touch
+// a temp file, which is the point when the key cannot be downloaded.
 const importIndex = process.argv.indexOf("--import");
-if (importIndex !== -1) {
-  const src = process.argv[importIndex + 1];
-  if (!src) fail("--import 需要一个私钥文件路径");
-  const file = path.resolve(src);
-  if (!fs.existsSync(file)) fail(`文件不存在：${file}`);
+const useStdin = process.argv.includes("--stdin");
+const useClipboard = process.argv.includes("--clipboard");
 
-  const text = fs.readFileSync(file, "utf8");
+if (importIndex !== -1 || useStdin || useClipboard) {
+  let text = "";
+  let sourceLabel = "";
+
+  if (importIndex !== -1) {
+    const src = process.argv[importIndex + 1];
+    if (!src) fail("--import 需要一个私钥文件路径");
+    const file = path.resolve(src);
+    if (!fs.existsSync(file)) fail(`文件不存在：${file}`);
+    text = fs.readFileSync(file, "utf8");
+    sourceLabel = file;
+  } else if (useClipboard) {
+    try {
+      text = execFileSync(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-Command", "Get-Clipboard -Raw"],
+        { encoding: "utf8", windowsHide: true, timeout: 15000 },
+      );
+    } catch (e) {
+      fail(`读取剪贴板失败：${e.message}\n  改用 --stdin，把私钥粘贴进去再按 Ctrl+Z 回车。`);
+    }
+    sourceLabel = "剪贴板";
+  } else {
+    text = fs.readFileSync(0, "utf8");
+    sourceLabel = "标准输入";
+  }
+
+  if (text.trim() === "") fail(`${sourceLabel} 里没有内容。`);
+
   if (!isOpenSshPrivateKey(text)) {
     fail(
-      "这不是 OpenSSH 私钥（缺 -----BEGIN OPENSSH PRIVATE KEY-----）。\n" +
+      `${sourceLabel} 的内容不是 OpenSSH 私钥（缺 -----BEGIN OPENSSH PRIVATE KEY-----）。\n` +
+        "  常见原因：复制时漏了 BEGIN/END 行，或被编辑器插入了多余字符。\n" +
         "  如果它已经是 PKCS8 PEM，直接用 RELEASE_SIGNING_KEY 指向它即可，无需导入。",
     );
   }
+  console.log(`✓ 已从${sourceLabel}读取私钥`);
 
   let imported;
   try {
