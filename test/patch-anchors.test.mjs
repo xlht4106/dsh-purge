@@ -69,11 +69,22 @@ for (const [fp, entries] of byFile) {
 
 // Restore-type patches put an upstream file BACK to its official shape. On a
 // pristine tree there is nothing to restore, so they are expected to be unsettled
-// and must not count as failures. Verified by hand: neither dsh-base/cordis.patch.yml
-// nor minimal.patch.yml carries any `[dsh-purge]` marker on a clean install.
+// and must not count as failures.
+//
+// #90 / #91 came in with the upstream 0.2.0 work: they fold systemPrompt into the
+// provider's *native* system slot and only have anchors once the plugin's own older
+// edits (or a patched pi-ai) are present. On a clean host tree there is nothing to
+// rewrite, so they are restore-style here too.
+//
+// #88 was renamed by upstream from HUNG_PROMPT_STRICT_NEEDLE to HUNG_PROMPT_REMOVED:
+// it no longer tightens a hang needle but removes the post-renderPrompt hang entirely,
+// so its anchors no longer exist on a clean 0.2.1 tree by design.
 const RESTORE_TYPE = new Map([
   [21, "BASH_TIMEOUT_RESTORE: 还原插件曾延长的 timeoutMs"],
   [80, "MINIMAL_OFFICIAL_TOOLSET: 还原插件曾追加的 fs/web 工具行"],
+  [88, "HUNG_PROMPT_REMOVED: 移除挂针，干净树上本就没有可移除的挂针"],
+  [90, "OPENAI_NATIVE_SYSTEM_ROLE: 仅当插件旧改动存在时才有锚点"],
+  [91, "ANTHROPIC_NATIVE_PARAMS_SYSTEM: 仅当插件旧改动存在时才有锚点"],
 ]);
 
 const unsettled = [];
