@@ -28,7 +28,12 @@
   config:
     includeHarnessIdentity: false
     personaPrefix: ""
-    personaSuffix: Your working directory is {{cwd}}.
+    # 不要在这里写 {{cwd}}。
+    # dsh 0.2.1 的 agent loop 只注册 provider / model，不再注册 cwd；而
+    # renderPrompt() 对未注册变量直接抛错，会让每一轮对话在发请求前就失败
+    # （issues #114 / #136）。工作目录改由 lib/prompt-variables.js 注册的
+    # cwd 变量提供，并由 lib/identity.js 的 fillCwdPlaceholders 兜底替换。
+    personaSuffix: ""
 
 - id: dsh-purge
   inject: [systemPrompt, tools]
