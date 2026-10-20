@@ -1,3 +1,29 @@
+# 1.1.73
+
+## 中文
+
+- 版本 **1.1.73**。修掉 0.2.1 上的三个阻断性问题，并把演练台面板改成官方右侧栏页签。
+- **修复每轮对话直接崩溃**（上游 #114 / #136）：dsh 0.2.1 的 agent loop 只注册 `provider` / `model`，不再注册 `cwd`，而 `renderPrompt()` 对未注册变量硬抛错，整轮在发出任何模型请求之前就失败 —— 清洗面板却全是绿的，看不出问题在哪。现在由插件自己通过公开的 `systemPrompt.variable()` 注册 `cwd`，值跟随 `workingDirectory` 服务；宿主已注册时（0.2.0）不覆盖。另有兜底：任何残留的 `{{cwd}}` 会在组装末尾换成真实路径。
+- **修复应用后报「清洗没有写进全部宿主，已取消重启」**（上游 #132 / #142）：`host-clean` 只认两种补丁标记，而 0.2.1 产出的是第三种 `[dsh-purge] every mode keeps system inject`。认不出后又落到结构判定，结构判定在**已修复的文件上同样命中**，于是永远判成未清洗、桌面端永不重启。现在三种标记全认，并新增诊断输出。
+- **修复宿主 `fatal load failure`**（上游 #119）：`repairOfficialCliAfterUnpack()` 是同步函数，却在里面调 async 的 `atomicCopyFile()` 且未 `await`，`try/catch` 接不住 rejection，Node 24 升级成 uncaughtException，宿主退出码 1。改用同步复制。
+- **演练台面板改为官方右侧栏页签**：原来是自己实现的 `position:fixed` 浮窗（拖拽、缩放、几何持久化全自研），现在注册到 `sidebar.right.pane.tab`，与官方终端 / 文件 / 浏览器 / 文档预览面板并列。自动获得宽度控制、分屏、全屏切换、窄屏（<768px）自动全屏、切会话保留页签。浮窗代码保留，老宿主没有右侧栏插槽时自动回退；也可用 `localStorage["dsh-purge-dock-mode"]` 手动切回。
+- **修复 CI**：版本号未变时 Release 会失败 —— `Publish` 步骤 `exit 0` 跳过了打包，但后面的签名步骤仍会执行，报 `archive not found`。
+- **发布通道统一回 `master`**：上游的商业许可版本已从 `master` 覆盖掉，之前临时启用的 `mit-1.1.72` 分支删除。
+- README 重构：赞助、广告位、违规商用公示移到文末附录，正文从介绍开始；修掉分叉后遗留的过时路径。
+- 测试从 11 项增至 **14 个测试文件**，新增 `prompt-variables`（13 项）、`host-clean`（15 项）、`right-pane`（19 项）。
+
+## English
+
+- **1.1.73**. Fixes three blocking issues on dsh 0.2.1 and moves the drill panel into the official right sidebar.
+- **Fixed: every turn crashed** (upstream #114 / #136). On dsh 0.2.1 the agent loop registers only `provider` and `model` — no `cwd` — while `renderPrompt()` throws on any unregistered variable. The whole turn died before a model request, yet the clean panel stayed green, hiding the cause. The plugin now registers `cwd` itself through the public `systemPrompt.variable()`, backed by the `workingDirectory` service; on 0.2.0 the host already owns it and is left alone. A fallback replaces any leftover `{{cwd}}` with the real path at the end of assembly.
+- **Fixed: "cleaning did not reach every host, restart cancelled"** (upstream #132 / #142). `host-clean` knew two patch markers; 0.2.1 produces a third, `[dsh-purge] every mode keeps system inject`. Missing it fell through to a structural test that also matches the *patched* file, so the host was forever judged unclean and never restarted. All three markers are now recognised, with diagnostics.
+- **Fixed: host `fatal load failure`** (upstream #119). `repairOfficialCliAfterUnpack()` is synchronous but called the async `atomicCopyFile()` without `await`; `try/catch` cannot catch the rejection, Node 24 escalates it to an uncaught exception, and the host exits with code 1. Switched to a synchronous copy.
+- **Drill panel is now an official right-sidebar tab.** It used to be a hand-rolled `position:fixed` floating window with custom drag, resize and geometry persistence. It now registers into `sidebar.right.pane.tab`, alongside the host's own terminal / files / browser / document-preview panels, gaining width control, split pane, fullscreen, automatic fullscreen below 768px, and tab retention across session switches. The floating window is kept as a fallback for older hosts without the right-sidebar slots, and `localStorage["dsh-purge-dock-mode"]` switches back manually.
+- **Fixed CI**: Release failed whenever the version had not changed — the `Publish` step exited early without building the zip, but the signing step still ran and reported `archive not found`.
+- **Release channel moved back to `master`**: the upstream commercial-license commits were overwritten on `master`, so the temporary `mit-1.1.72` branch is gone.
+- README restructured: sponsor, ad slots and the takedown notice moved into an appendix, so the body starts with the introduction; stale fork paths corrected.
+- Tests grew from 11 to **14 test files**, adding `prompt-variables` (13 assertions), `host-clean` (15) and `right-pane` (19).
+
 # 1.1.72
 
 ## 中文

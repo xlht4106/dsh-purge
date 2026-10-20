@@ -4,7 +4,7 @@
 
 <h1 align="center">⚔️ DeepSeek Harness cybersecurity red-team tool (dsh-purge)</h1>
 
-<p align="center"><strong>Version 1.1.72</strong></p>
+<p align="center"><strong>Version 1.1.73</strong></p>
 
 <p align="center">
   <em>DeepSeek Harness jailbreak: every model, swap prompts per model. Default prompt for 小码酱. Please star ⭐ If you build on this, see Attribution required.</em>
@@ -131,8 +131,8 @@ This repository is a fork of that project under MIT and is bound by the same rul
 
 The latest plugin supports **dsh 0.2** only — do not apply it to 0.1.x.
 
-- **dsh 0.2.1** (official desktop **0.2.1-rc.2** / official `dsh web`): use **1.1.72** or newer. 0.2.1 moved the Web-surface identity prompt into the new `dsh-harness-dev-context` package; older plugin versions silently skip those patches.
-- **dsh 0.2.0** (official desktop **0.2.0-rc.2**): use **1.1.40 – 1.1.71**. 1.1.72 keeps the 0.2.0 anchors too, so either host works.
+- **dsh 0.2.1** (official desktop **0.2.1-rc.2** / official `dsh web`): use **1.1.73** or newer. 1.1.72 and earlier hit two blocking bugs on 0.2.1 — every turn crashed on an unregistered `{{cwd}}` variable, and Apply never restarted the host; both are fixed in 1.1.73. 0.2.1 also moved the Web-surface identity prompt into the new `dsh-harness-dev-context` package; older plugin versions silently skip those patches.
+- **dsh 0.2.0** (official desktop **0.2.0-rc.2**): use **1.1.40 – 1.1.72**. 1.1.73 keeps the 0.2.0 anchors too, so either host works.
 - **dsh 0.1.7** (incl. rc.1 / rc.2): use **1.1.39** or older — pick the tag on [Releases](https://github.com/xlht4106/dsh-purge/releases).
 
 `engines.dsh` pins `>=0.2.0-rc.2 <0.3.0`, so the host rejects an incompatible runtime at install/enable time instead of letting you discover later that patches no longer apply.
@@ -166,7 +166,7 @@ Hub one-click on [dsh-plugin.org](https://dsh-plugin.org/plugins/yujunzhixue/dsh
 For the desktop client you can also click the button (`dsh://` deep link):
 
 <p align="center">
-  <a href="dsh://plugin/install?id=dsh-purge&name=dsh-purge&version=1.1.72&repo=xlht4106%2Fdsh-purge&permissions=%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5%2C%E6%9C%AC%E6%9C%BA%E8%A1%A5%E4%B8%81%2C%E8%AE%BE%E7%BD%AE%E9%A1%B5&downloadUrl=https%3A%2F%2Fgithub.com%2FYuJunZhiXue%2Fdsh-purge%2Farchive%2Frefs%2Fheads%2Fmaster.tar.gz"><strong>Install in desktop client</strong></a>
+  <a href="dsh://plugin/install?id=dsh-purge&name=dsh-purge&version=1.1.73&repo=xlht4106%2Fdsh-purge&permissions=%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5%2C%E6%9C%AC%E6%9C%BA%E8%A1%A5%E4%B8%81%2C%E8%AE%BE%E7%BD%AE%E9%A1%B5&downloadUrl=https%3A%2F%2Fgithub.com%2FYuJunZhiXue%2Fdsh-purge%2Farchive%2Frefs%2Fheads%2Fmaster.tar.gz"><strong>Install in desktop client</strong></a>
 </p>
 
 ### After the command: three steps

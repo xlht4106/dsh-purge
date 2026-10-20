@@ -4,7 +4,7 @@
 
 <h1 align="center">⚔️ DeepSeek Harness 网络安全红队工具（dsh-purge）</h1>
 
-<p align="center"><strong>Version 1.1.72</strong></p>
+<p align="center"><strong>Version 1.1.73</strong></p>
 
 <p align="center">
   <em>DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分</em>
@@ -128,8 +128,8 @@ Harness 不只是把问题交给模型。它还会在运行时改提示词、审
 
 最新版只支持 **dsh 0.2**，不要拿它去打 0.1.x。
 
-- **dsh 0.2.1**（官方桌面 **0.2.1-rc.2** / 官方 `dsh web`）：用 **1.1.72** 及以上。0.2.1 把 Web 面身份提示词迁到了新包 `dsh-harness-dev-context`，更早的插件版本会静默漏掉这类补丁。
-- **dsh 0.2.0**（官方桌面 **0.2.0-rc.2**）：用 **1.1.40 ~ 1.1.71**。1.1.72 同时保留了 0.2.0 的锚点，两边都能用。
+- **dsh 0.2.1**（官方桌面 **0.2.1-rc.2** / 官方 `dsh web`）：用 **1.1.73** 及以上。1.1.72 及更早会在 0.2.1 上遇到「每轮对话崩溃（`{{cwd}}` 未注册）」和「应用后不重启」两个问题，1.1.73 已修。0.2.1 还把 Web 面身份提示词迁到了新包 `dsh-harness-dev-context`，更早的插件版本会静默漏掉这类补丁。
+- **dsh 0.2.0**（官方桌面 **0.2.0-rc.2**）：用 **1.1.40 ~ 1.1.72**。1.1.73 同时保留了 0.2.0 的锚点，两边都能用。
 - **dsh 0.1.7**（含 rc.1 / rc.2）：用 **1.1.39** 及更早 —— 在 [Releases](https://github.com/xlht4106/dsh-purge/releases) 里选对应标签。
 
 `engines.dsh` 限定 `>=0.2.0-rc.2 <0.3.0`，宿主会在安装/启用时直接拦下不兼容的版本，而不是装上了才发现补丁不生效。
@@ -163,7 +163,7 @@ dsh plugin --profile desktop add dsh-purge
 桌面客户端也可以点按钮（`dsh://` 唤起）：
 
 <p align="center">
-  <a href="dsh://plugin/install?id=dsh-purge&name=dsh-purge&version=1.1.72&repo=xlht4106%2Fdsh-purge&permissions=%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5%2C%E6%9C%AC%E6%9C%BA%E8%A1%A5%E4%B8%81%2C%E8%AE%BE%E7%BD%AE%E9%A1%B5&downloadUrl=https%3A%2F%2Fgithub.com%2Fxlht4106%2Fdsh-purge%2Farchive%2Frefs%2Fheads%2Fmaster.tar.gz"><strong>唤起客户端一键安装</strong></a>
+  <a href="dsh://plugin/install?id=dsh-purge&name=dsh-purge&version=1.1.73&repo=xlht4106%2Fdsh-purge&permissions=%E7%B3%BB%E7%BB%9F%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5%2C%E6%9C%AC%E6%9C%BA%E8%A1%A5%E4%B8%81%2C%E8%AE%BE%E7%BD%AE%E9%A1%B5&downloadUrl=https%3A%2F%2Fgithub.com%2Fxlht4106%2Fdsh-purge%2Farchive%2Frefs%2Fheads%2Fmaster.tar.gz"><strong>唤起客户端一键安装</strong></a>
 </p>
 
 ### 装完都要做这三步
