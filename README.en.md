@@ -37,6 +37,8 @@
 >
 > Adding the plugin to a profile does not patch the host. Click **dsh-purge** beside the session title → **Clean** → **Apply**. A successful Apply restarts; an unfinished Apply does not. After the restart, start a new chat — that is when the inject enters the session.
 >
+> **When a restart is needed:** patches rewrite source files on disk that the process already imported at startup, so **writing patches requires a restart** (and a sealed asar must additionally be swapped, which also cannot happen in-process). The prompt, rule sets and the per-session injection switch are read from disk every turn, so **they take effect on the next turn without any restart**. Since 1.1.74, an Apply that only updated the prompt and wrote no patches no longer restarts.
+>
 > Node.js **≥18**. Windows no-flash needs **Node ≥22**. Hub one-click and the commands below both install the npm package `dsh-purge`.
 
 ## Contents
