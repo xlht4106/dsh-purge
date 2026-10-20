@@ -136,6 +136,9 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"dock.full": "全面浏览",
 			"dock.close": "收起",
 			"dock.unauthorized": "未授权",
+			"pane.title": "dsh-purge",
+			"dock.tab.clean": "清洗",
+			"dock.tab.drill": "演练台",
 			"welcome.title": "用户须知",
 			"welcome.lead": "首次安装本插件时请阅读以下说明。确认后本窗不再弹出。",
 			"welcome.warn": "本插件免费开源。任何背着作者私自售卖、付费倒卖或借本项目盈利的行为，作者将依法追究法律责任。",
@@ -481,6 +484,9 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"dock.full": "Full view",
 			"dock.close": "Collapse",
 			"dock.unauthorized": "Unauthorized",
+			"pane.title": "dsh-purge",
+			"dock.tab.clean": "Clean",
+			"dock.tab.drill": "Drill",
 			"welcome.title": "User notice",
 			"welcome.lead": "Please read this on first install. After you confirm, it will not appear again.",
 			"welcome.warn": "This plugin is free and open source. Anyone who sells, resells, or profits from it behind the author's back may face legal action.",
@@ -1052,6 +1058,21 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 .dshp-dock[data-theme="white"] .dshp-dock-body .rt-err{color:#9a3434!important}
 .dshp-dock[data-theme="dusk"] .dshp-dock-body .rt-err{color:#f0b4b4!important}
 .dshp-dock-body .rt-rep-http,.dshp-dock-body pre{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1,#fff) 84%,transparent)!important;color:var(--dshp-ink)!important;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l1,#888) 60%,transparent)!important}
+/* ── 右侧栏页签（sidebar.right.pane.tab）─────────────────────────────
+   这一块是「嵌入官方侧栏」模式：不再是 position:fixed 浮窗，而是填满官方
+   右栏给的容器。官方负责宽度、缩放、窄屏全屏、页签切换，这里只做内容排版。
+   注意不要在这里写 position/width/height —— 那些由官方容器决定，
+   写死会与官方的 splitPane / fullscreen 打架。 */
+.dshp-pane{display:flex;flex-direction:column;height:100%;min-height:0;color:var(--dsw-alias-label-primary,#f2f2f2)}
+.dshp-pane-tabs{display:flex;gap:4px;padding:0 8px;flex:none;border-bottom:1px solid color-mix(in srgb,var(--dsw-alias-border-l1,#555) 55%,transparent)}
+.dshp-pane-tab{appearance:none;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary,#b8b4ac);border-radius:0;padding:8px 12px 6px;margin-bottom:-1px;cursor:pointer;font:13px/1.2 inherit}
+.dshp-pane-tab:hover{color:var(--dsw-alias-label-primary,#f2f2f2)}
+.dshp-pane-tab.on{color:var(--dsw-alias-label-primary,#f2f2f2);font-weight:600;border-bottom-color:var(--dsw-alias-brand-primary,#6dbf8c)}
+.dshp-pane-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column}
+.dshp-pane-body .dshp-root{max-width:none;flex:1;min-height:0;overflow:auto;background:transparent!important}
+/* 页签标题：只放一个小圆点 + 名字，不跟官方页签抢宽度 */
+.dshp-pane-title{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshp-pane-dot{width:7px;height:7px;border-radius:50%;background:var(--dsw-alias-brand-primary,#6dbf8c);flex:none}
 `;
 
 		function formatSize(bytes) {
@@ -7868,6 +7889,9 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 		function getDock() { return dockBus; }
 		function setDock(patch) {
 			dockBus = Object.assign({}, dockBus, patch);
+			// 页签模式下 `open: true` 的语义变成「把右侧栏切到我们的页签」。
+			// 官方右侧栏有自己的开合状态，我们没法直接控制；但切页签时宿主会
+			// 自动展开右栏，所以这里只需要把当前页签记下来，由 RightPaneBody 响应。
 			dockBus.listeners.forEach((fn) => { try { fn(dockBus); } catch { /* ignore */ } });
 		}
 		function useDock() {
@@ -7916,6 +7940,32 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 		syncDrillGrant();
 
 		const DOCK_GEOM_KEY = "dsh-purge-dock-geom-v4";
+		/*
+		 * 面板呈现模式。
+		 *   "pane" —— 嵌进官方右侧栏（新默认，宿主支持 sidebar.right.pane.tab 时）
+		 *   "dock" —— 老的浮动窗（宿主没有右侧栏插槽时回退，或用户手动选择）
+		 *
+		 * 存 localStorage 而不是配置里：这是纯 UI 偏好，不需要同步到宿主。
+		 */
+		const DOCK_MODE_KEY = "dsh-purge-dock-mode";
+		/** 宿主是否提供右侧栏页签插槽。由 installRightPaneTab 探测后置位。 */
+		let rightPaneAvailable = false;
+		function readDockMode() {
+			try {
+				const v = window.localStorage.getItem(DOCK_MODE_KEY);
+				return v === "dock" || v === "pane" ? v : "";
+			} catch { return ""; }
+		}
+		function writeDockMode(mode) {
+			try { window.localStorage.setItem(DOCK_MODE_KEY, mode); } catch { /* 隐私模式等：不持久化也能用 */ }
+		}
+		/** 当前应不应该渲染浮窗。 */
+		function useDockWindow() {
+			const saved = readDockMode();
+			if (saved) return saved === "dock";
+			// 没存过：宿主有右侧栏就用页签，否则退回浮窗。
+			return !rightPaneAvailable;
+		}
 		/* 默认停在右上，底边留在输入框上面。拖动之后停在用户松开的位置，只保证不拖出窗口。 */
 		const DOCK_COMPOSER_CLEAR = 172;
 		function defaultDockGeom() {
@@ -8442,6 +8492,13 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 		function PurgeDock() {
 			const t = useT();
 			const st = useDock();
+			/*
+			 * 嵌入官方右侧栏时不渲染浮窗。
+			 *
+			 * 两种模式二选一，否则同一个面板会出现两次（右侧栏页签一份、浮窗一份）。
+			 * 用 useState 保存判定结果，保证 hooks 顺序稳定（不能在 hooks 之前 return）。
+			 */
+			const [showWindow] = useState(useDockWindow);
 			const [geom, setGeom] = useState(() => loadDockGeom());
 			const [dockTheme, setDockTheme] = useState(detectHostTheme);
 			useEffect(() => {
@@ -8620,6 +8677,17 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 			let portal = null;
 			let authPortal = null;
 			const authNode = st.authOpen ? h(AuthGate, { pending: st.pending }) : null;
+			// 面板已经嵌进官方右侧栏时不再渲染浮窗，避免同一个界面出现两次。
+			// 授权弹窗仍走 portal —— 它是模态的，需要盖在最上层，与面板位置无关。
+			if (!showWindow) {
+				try {
+					const rd = require("react-dom");
+					if (authNode && rd && typeof rd.createPortal === "function" && typeof document !== "undefined" && document.body) {
+						return rd.createPortal(authNode, document.body);
+					}
+				} catch { /* host 可能没暴露 react-dom */ }
+				return authNode;
+			}
 			try {
 				const rd = require("react-dom");
 				if (rd && typeof rd.createPortal === "function" && typeof document !== "undefined" && document.body) {
@@ -8825,10 +8893,139 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
 			ctx.effect(() => installRewindWatch(ctx), "dsh-purge: rewind watch");
 		}
 
+		/*
+		 * 把演练台/清洗面板挂到官方右侧栏，作为一个页签。
+		 *
+		 * 为什么不再用 shell.overlay 浮窗：
+		 * 浮窗是 position:fixed，自己实现拖拽、缩放、贴边，还要自己处理主题同步、
+		 * 窄屏溢出。官方右侧栏（rightbar）已经把这些都做了，并额外提供
+		 * width / viewportWidth / canShow / retainTab / splitPane / toggleFullscreen，
+		 * 窄屏（<768px）自动全屏。官方的终端、文件、浏览器、文档预览四个面板
+		 * 都走同一套插槽，用户已经习惯那里的页签切换。
+		 *
+		 * 注册方式照抄 dsh-client-ui-sidebar-terminal：
+		 *   sidebar.right.pane.tab        -> 面板正文
+		 *   sidebar.right.pane.tab.title  -> 页签标题
+		 * key 用于区分不同页签；locale 让标题走官方翻译管线。
+		 *
+		 * 失败必须静默：宿主没有这些插槽时（更老的 dsh），退回原来的浮窗即可，
+		 * 不能让整个客户端插件加载失败。
+		 */
+		function installRightPaneTab(ctx, t) {
+			const slots = ctx && ctx.slots;
+			if (!slots || typeof slots.inject !== "function" || typeof slots.register !== "function") return;
+			const KEY = "dsh-purge";
+			let bodyOk = false;
+			let titleOk = false;
+			try {
+				ctx.effect(() => slots.inject("sidebar.right.pane.tab", () => slots.register({
+					name: "sidebar.right.pane.tab",
+					key: KEY,
+					locale: NS,
+					inject: (sessionId) => ({ sessionId, t }),
+				}, RightPaneBody)), "dsh-purge: right pane body");
+				bodyOk = true;
+			} catch (e) {
+				try { console.warn("[dsh-purge] right pane tab skipped:", e); } catch { /* ignore */ }
+			}
+			try {
+				ctx.effect(() => slots.inject("sidebar.right.pane.tab.title", () => slots.register({
+					name: "sidebar.right.pane.tab.title",
+					key: KEY,
+					locale: NS,
+					inject: (sessionId) => ({ sessionId, t }),
+				}, RightPaneTitle)), "dsh-purge: right pane title");
+				titleOk = true;
+			} catch (e) {
+				try { console.warn("[dsh-purge] right pane title skipped:", e); } catch { /* ignore */ }
+			}
+			// 两个插槽都挂上了，说明宿主支持右侧栏页签。此时默认不再显示浮窗，
+			// 否则同一个面板会出现两次（页签一份、浮窗一份）。用户仍可在设置里
+			// 手动切回浮窗（dshp-dock-mode），浮窗代码保留以便老宿主回退。
+			if (bodyOk && titleOk) {
+				rightPaneAvailable = true;
+				try {
+					if (!readDockMode()) writeDockMode("pane");
+				} catch { /* localStorage 不可用时按默认 pane 处理 */ }
+			}
+		}
+
+		/** 右侧栏页签标题。保持极简：图标点 + 名字，不抢官方页签的空间。 */
+		function RightPaneTitle(props) {
+			const tt = (props && props.t) || translate || ((k) => k);
+			return h("span", { className: "dshp-pane-title" },
+				h("span", { className: "dshp-pane-dot" }),
+				tt("pane.title"));
+		}
+
+		/**
+		 * 右侧栏页签正文。
+		 *
+		 * 复用现有两个页面：清洗（SettingsRoot）与演练台（内嵌的 drill Panel）。
+		 * 未授权时演练台显示提示，与浮窗里的行为一致。
+		 */
+		function RightPaneBody(props) {
+			const tt = (props && props.t) || translate || ((k) => k);
+			const st = useDock();
+			const [theme, setTheme] = useState(detectHostTheme);
+			useEffect(() => {
+				const sync = () => setTheme(detectHostTheme());
+				sync();
+				const obs = new MutationObserver(sync);
+				if (document.body) obs.observe(document.body, { attributes: true, attributeFilter: ["data-ds-dark-theme", "class", "style"] });
+				obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-ds-dark-theme", "class", "style"] });
+				return () => obs.disconnect();
+			}, []);
+			useEffect(() => {
+				let uiTag = document.querySelector('style[data-dsh-purge-ui="1"]');
+				if (!uiTag) {
+					uiTag = document.createElement("style");
+					uiTag.setAttribute("data-dsh-purge-ui", "1");
+					uiTag.textContent = PURGE_CSS;
+					document.head.append(uiTag);
+				}
+				if (!__dshPurgeDrill || !__dshPurgeDrill.CSS) return undefined;
+				const styleTag = document.createElement("style");
+				styleTag.setAttribute("data-dsh-purge-drill", "1");
+				styleTag.textContent = __dshPurgeDrill.CSS;
+				document.head.append(styleTag);
+				return () => styleTag.remove();
+			}, []);
+			const body = st.tab === "clean"
+				? h(SettingsRoot, { t: tt })
+				: (readDrillAuth() && __dshPurgeDrill && __dshPurgeDrill.Panel
+					? h(__dshPurgeDrill.Panel, { embedded: true })
+					: h("div", { style: { padding: 16, color: "var(--dsw-alias-label-secondary)" } }, tt("dock.unauthorized")));
+			return h("div", {
+				className: "dshp-pane",
+				"data-theme": theme === "white" ? "white" : "dusk",
+			},
+				h("div", { className: "dshp-pane-tabs", role: "tablist" },
+					h("button", {
+						type: "button",
+						className: "dshp-pane-tab" + (st.tab === "clean" ? " on" : ""),
+						onClick: () => setDock({ tab: "clean" }),
+					}, tt("dock.tab.clean")),
+					h("button", {
+						type: "button",
+						className: "dshp-pane-tab" + (st.tab === "drill" ? " on" : ""),
+						onClick: () => {
+							setDock({ tab: "drill" });
+							if (readDrillAuth() && __dshPurgeDrill && __dshPurgeDrill.setUI) {
+								try { __dshPurgeDrill.setUI({ open: true }); } catch { /* ignore */ }
+							}
+						},
+					}, tt("dock.tab.drill")),
+				),
+				h("div", { className: "dshp-pane-body" }, body),
+			);
+		}
+
 		function apply(ctx) {
 			ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-purge: dictionaries");
 			const t = ctx.locale.bind(NS);
 			translate = t;
+			installRightPaneTab(ctx, t);
 			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
 				name: "shell.overlay",
 				id: "dsh-purge-dock",
