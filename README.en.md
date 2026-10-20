@@ -472,6 +472,45 @@ flowchart TD
   A["Restart or new session"] --> B["Inject the plugin's encrypted default. No save click, and no host prompt file"]
 ```
 
+### Per-session injection (since 1.1.74)
+
+Injection changed from "on for everything" to **per session, off by default**. Each
+session records its own switch, sessions do not affect each other, and a change takes
+effect on the **next turn** — no interruption of the reply in progress, no host restart.
+
+```mermaid
+flowchart TD
+  A["New turn"] --> B{"Global enabled off?"}
+  B -->|yes| Z["No injection"]
+  B -->|no| C{"Subagent?"}
+  C -->|yes| D["Use the parent session's record"]
+  C -->|no| E["Use this session's record"]
+  D --> F{"Record exists and enabled?"}
+  E --> F
+  F -->|no| Z
+  F -->|yes| G{"Session carries its own text?"}
+  G -->|yes| H["Inject = session text"]
+  G -->|no| I["Inject = prompt-inject.md / rule sets"]
+```
+
+State lives in `$DSH_HOME/dsh-purge/session-inject.json`, keyed by session id.
+Subagents are not configured separately — they inherit the parent. When the session id
+cannot be determined, injection is skipped: not injecting is better than injecting into
+the wrong session.
+
+> **Upgrade note**: before 1.1.74 every session was injected automatically; after
+> upgrading, all are off by default and must be enabled per session in the panel's
+> "Session injection" section. A one-time banner says so the first time. The plugin is
+> not broken.
+
+Command line:
+
+```sh
+dsh-purge --session-inject on  <sessionId>   # enable
+dsh-purge --session-inject off <sessionId>   # disable
+dsh-purge --session-inject status            # list every session's state
+```
+
 Prompt injection and ruleset decision at every turn. The three inputs on the left are what you control in the dsh-purge panel; the dotted edges show which decision each one drives:
 
 ```mermaid

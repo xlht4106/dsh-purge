@@ -6,6 +6,7 @@ import * as rules from "../lib/rules.js";
 import { hindsightReport } from "../lib/hindsight-compat.js";
 import { hasTrustedKey } from "../lib/release-signature.js";
 import { repoSlug } from "../lib/update.js";
+import * as sessionInject from "../lib/session-inject.js";
 
 const args = process.argv.slice(2);
 
@@ -63,6 +64,18 @@ function printStatus(state) {
   }
   out.push("");
   out.push(`  shim: dsh.cmd=${state.shim_cmd}  dsh.ps1=${state.shim_ps1}  dsh=${state.shim_bin}`);
+  // 会话注入：默认全关，所以要让人一眼看到「现在有哪些会话开着注入」。
+  try {
+    const sum = sessionInject.summarize(state.dsh_home);
+    out.push("");
+    out.push(`  会话注入       默认关闭；已记录 ${sum.total} 个会话，开启 ${sum.enabled} 个`);
+    for (const row of sum.sessions.slice(0, 8)) {
+      out.push(`    ${row.enabled ? "✓" : "·"} ${row.id}${row.updatedAt ? "  " + row.updatedAt : ""}`);
+    }
+    if (sum.sessions.length > 8) out.push(`    …还有 ${sum.sessions.length - 8} 个`);
+  } catch {
+    // 状态文件读不了不影响其它输出。
+  }
   const third = thirdPartyLines(state);
   if (third.length) {
     out.push("");
@@ -73,7 +86,7 @@ function printStatus(state) {
 }
 
 async function main() {
-  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help"].includes(a));
+  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--session-inject", "--help"].includes(a));
 
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
@@ -82,8 +95,50 @@ async function main() {
   dsh-purge --revert     回滚还原
   dsh-purge --uninstall  卸载插件（已应用则先还原）
   dsh-purge --edit       编辑注入文件 prompt-inject.md
+  dsh-purge --session-inject <on|off|status> <sessionId> [text]
+                         单会话注入开关（下一轮生效，不影响其它会话）
   dsh-purge --help       帮助`);
     return;
+  }
+
+  // 会话注入子命令：不改宿主，只动状态文件，所以放在 gatherState 之前。
+  if (mode === "--session-inject") {
+    const idx = args.indexOf("--session-inject");
+    const action = String(args[idx + 1] || "status").trim().toLowerCase();
+    const sessionId = String(args[idx + 2] || "").trim();
+    const dshHome = core.findDshHome();
+    if (!dshHome) {
+      console.log("[ERROR] 找不到 DSH_HOME");
+      process.exit(1);
+    }
+    if (action === "status") {
+      const sum = sessionInject.summarize(dshHome);
+      console.log(`会话注入 默认关闭；已记录 ${sum.total} 个，开启 ${sum.enabled} 个`);
+      for (const row of sum.sessions) {
+        console.log(`  ${row.enabled ? "✓" : "·"} ${row.id}${row.updatedAt ? "  " + row.updatedAt : ""}`);
+      }
+      if (sessionId) {
+        const rec = sessionInject.readState(dshHome).sessions[sessionId];
+        console.log("");
+        console.log(`  ${sessionId}: ${rec && rec.enabled ? "开启" : "关闭"}`);
+      }
+      return;
+    }
+    if (sessionId === "") {
+      console.log("[ERROR] 需要 sessionId");
+      process.exit(1);
+    }
+    if (action === "on" || action === "off") {
+      const text = args[idx + 3];
+      const rec = sessionInject.setSessionState(dshHome, sessionId, {
+        enabled: action === "on",
+        text: typeof text === "string" ? text : undefined,
+      });
+      console.log(`✓ ${sessionId} 注入已${rec.enabled ? "开启" : "关闭"}（下一轮生效）`);
+      return;
+    }
+    console.log(`[ERROR] 未知动作: ${action}（可用 on / off / status）`);
+    process.exit(1);
   }
 
   const state = await core.gatherState();

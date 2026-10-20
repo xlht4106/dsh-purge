@@ -139,6 +139,20 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"pane.title": "dsh-purge",
 			"dock.tab.clean": "清洗",
 			"dock.tab.drill": "演练台",
+			"session.title": "本会话注入",
+			"session.lead": "注入已改为按会话控制，默认关闭。开关在下一轮对话生效，不影响其它会话，也不用重启宿主。",
+			"session.enable": "启用",
+			"session.disable": "关闭",
+			"session.working": "处理中…",
+			"session.on": "已启用",
+			"session.off": "未启用",
+			"session.on.ok": "已启用，下一轮生效",
+			"session.off.ok": "已关闭，下一轮恢复未注入",
+			"session.fail": "操作失败",
+			"session.noSession": "（未选中会话）",
+			"session.noSession.hint": "先打开一个会话说，再来切换注入。",
+			"session.banner": "升级提示：注入已改为按会话控制，默认关闭。现有会话不会自动注入，需要在这里逐个启用。",
+			"session.banner.ok": "知道了",
 			"welcome.title": "用户须知",
 			"welcome.lead": "首次安装本插件时请阅读以下说明。确认后本窗不再弹出。",
 			"welcome.warn": "本插件免费开源。任何背着作者私自售卖、付费倒卖或借本项目盈利的行为，作者将依法追究法律责任。",
@@ -487,6 +501,20 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"pane.title": "dsh-purge",
 			"dock.tab.clean": "Clean",
 			"dock.tab.drill": "Drill",
+			"session.title": "Session injection",
+			"session.lead": "Injection is now per session and off by default. A toggle takes effect on the next turn, without affecting other sessions or restarting the host.",
+			"session.enable": "Enable",
+			"session.disable": "Disable",
+			"session.working": "Working…",
+			"session.on": "Enabled",
+			"session.off": "Disabled",
+			"session.on.ok": "Enabled; takes effect next turn",
+			"session.off.ok": "Disabled; back to no injection next turn",
+			"session.fail": "Action failed",
+			"session.noSession": "(no session selected)",
+			"session.noSession.hint": "Open a session first, then come back to toggle injection.",
+			"session.banner": "Upgrade notice: injection is now per session and off by default. Existing sessions are not injected automatically — enable them here one by one.",
+			"session.banner.ok": "Got it",
 			"welcome.title": "User notice",
 			"welcome.lead": "Please read this on first install. After you confirm, it will not appear again.",
 			"welcome.warn": "This plugin is free and open source. Anyone who sells, resells, or profits from it behind the author's back may face legal action.",
@@ -1073,6 +1101,17 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 /* 页签标题：只放一个小圆点 + 名字，不跟官方页签抢宽度 */
 .dshp-pane-title{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dshp-pane-dot{width:7px;height:7px;border-radius:50%;background:var(--dsw-alias-brand-primary,#6dbf8c);flex:none}
+/* ── 单会话注入开关 ──────────────────────────────────────────────
+   默认关闭是一次行为变更，横幅要显眼但不能挡住操作，所以用一条浅色提示条
+   而不是模态弹窗；用户点「知道了」后写 localStorage，不再打扰。 */
+.dshp-session-banner{display:flex;align-items:center;gap:10px;padding:9px 11px;margin:0 0 10px;border-radius:8px;
+  border:1px solid color-mix(in srgb,var(--dsw-alias-brand-primary,#6dbf8c) 45%,transparent);
+  background:color-mix(in srgb,var(--dsw-alias-brand-primary,#6dbf8c) 12%,transparent);
+  font-size:12.5px;line-height:1.55}
+.dshp-session-banner-text{flex:1;min-width:0}
+.dshp-session-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:8px;vertical-align:middle;
+  background:color-mix(in srgb,var(--dsh-alias-label-secondary,#888) 60%,transparent)}
+.dshp-session-dot.on{background:var(--dsw-alias-brand-primary,#6dbf8c)}
 `;
 
 		function formatSize(bytes) {
@@ -2894,9 +2933,121 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 			translate = t;
 			return h("div", { className: "dshp-root", "data-theme": theme },
 				h("style", null, PURGE_CSS),
+				h(SessionInjectSection, null),
 				h(PurgifySection, null),
 				h(RulesSection, null),
 				h(SkillsSection, null),
+			);
+		}
+
+		/*
+		 * 单会话注入开关。
+		 *
+		 * 注入从全局改成了按会话控制，默认关闭。这一块负责：
+		 *   · 显示当前会话是否注入，并提供开关（下一轮生效）
+		 *   · 首次升级时给出一次性横幅，避免用户以为「插件坏了」
+		 *
+		 * 状态存在 $DSH_HOME/dsh-purge/session-inject.json，通过 /dsh-purge/session-inject 读写。
+		 */
+		const SESSION_BANNER_KEY = "dsh-purge-session-banner-v1";
+
+		function SessionInjectSection(props) {
+			const t = (props && props.t) || translate || ((key) => key);
+			const [sessionId, setSessionId] = useState("");
+			const [state, setState] = useState({ enabled: false, source: "default", loading: true });
+			const [busy, setBusy] = useState(false);
+			const [msg, setMsg] = useState(null);
+			const [banner, setBanner] = useState(false);
+
+			// 首次打开时决定要不要显示升级横幅。
+			useEffect(() => {
+				try {
+					if (window.localStorage.getItem(SESSION_BANNER_KEY) !== "1") setBanner(true);
+				} catch { /* 隐私模式：不显示横幅即可 */ }
+			}, []);
+
+			const dismissBanner = () => {
+				setBanner(false);
+				try { window.localStorage.setItem(SESSION_BANNER_KEY, "1"); } catch { /* ignore */ }
+			};
+
+			// 找到当前会话，并读取它的注入状态。
+			useEffect(() => {
+				let cancelled = false;
+				const load = () => {
+					const id = currentSessionId(rewindSessions);
+					if (cancelled) return;
+					if (id !== sessionId) setSessionId(id);
+					if (!id) {
+						setState({ enabled: false, source: "default", loading: false });
+						return;
+					}
+					apiJson("/dsh-purge/session-inject?sessionId=" + encodeURIComponent(id))
+						.then((d) => {
+							if (cancelled) return;
+							setState({
+								enabled: Boolean(d && d.enabled),
+								source: (d && d.source) || "default",
+								loading: false,
+							});
+						})
+						.catch(() => { if (!cancelled) setState({ enabled: false, source: "default", loading: false }); });
+				};
+				load();
+				const timer = window.setInterval(load, 5000);
+				return () => { cancelled = true; window.clearInterval(timer); };
+			}, [sessionId]);
+
+			const toggle = () => {
+				if (!sessionId || busy) return;
+				const next = !state.enabled;
+				setBusy(true);
+				setMsg(null);
+				apiJson("/dsh-purge/session-inject", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ sessionId, enabled: next }),
+				})
+					.then((d) => {
+						if (!d || d.ok === false) {
+							setMsg({ err: (d && d.error) || t("session.fail") });
+							return;
+						}
+						setState({ enabled: Boolean(d.enabled), source: d.source || "override", loading: false });
+						setMsg({ ok: next ? t("session.on.ok") : t("session.off.ok") });
+					})
+					.catch((e) => setMsg({ err: String((e && e.message) || e) }))
+					.finally(() => setBusy(false));
+			};
+
+			if (state.loading && !sessionId) return null;
+
+			return h("section", { className: "dshp-panel", "aria-label": t("session.title") },
+				banner ? h("div", { className: "dshp-session-banner" },
+					h("div", { className: "dshp-session-banner-text" }, t("session.banner")),
+					h("button", { type: "button", className: "dshp-mini", onClick: dismissBanner }, t("session.banner.ok")),
+				) : null,
+				h("h3", { className: "dshp-h3" },
+					t("session.title"),
+					h("span", {
+						className: "dshp-session-dot" + (state.enabled ? " on" : ""),
+						title: state.enabled ? t("session.on") : t("session.off"),
+					}),
+				),
+				h("div", { className: "dshp-sub" }, t("session.lead")),
+				h("div", { className: "dshp-row" },
+					h("span", { className: "dshp-mono" }, sessionId ? sessionId.slice(0, 12) : t("session.noSession")),
+					h("span", { style: { flex: 1 } }),
+					h("button", {
+						type: "button",
+						className: "dshp-mini" + (state.enabled ? " primary" : ""),
+						disabled: !sessionId || busy,
+						onClick: toggle,
+					}, busy ? t("session.working") : (state.enabled ? t("session.disable") : t("session.enable"))),
+				),
+				!sessionId ? h("div", { className: "dshp-hint" }, t("session.noSession.hint")) : null,
+				msg && msg.err ? h("div", { className: "dshp-err" }, msg.err) : null,
+				msg && msg.ok ? h("div", { className: "dshp-foot" }, msg.ok) : null,
 			);
 		}
 
